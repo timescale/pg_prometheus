@@ -19,12 +19,12 @@ SELECT * FROM metrics;
 SELECT prom_time(sample), prom_value(sample), prom_labels(sample) FROM metrics;
 
 
-SELECT prom_time(sample), prom_value(sample) FROM metrics 
+SELECT prom_time(sample), prom_value(sample) FROM metrics
 WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
       prom_name(sample) = 'cpu_usage' AND
       prom_labels(sample) @> '{"service": "nginx", "host": "machine1"}';
 
-EXPLAIN ANALYZE SELECT prom_time(sample), prom_value(sample) FROM metrics 
+EXPLAIN SELECT prom_time(sample), prom_value(sample) FROM metrics
 WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
       prom_name(sample) = 'cpu_usage' AND
       prom_labels(sample) @> '{"service": "nginx", "host": "machine1"}';

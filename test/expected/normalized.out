@@ -32,14 +32,15 @@ Foreign-key constraints:
     "metrics_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES metrics_labels(id)
 
 \d metrics_labels
-                         Table "public.metrics_labels"
- Column |  Type   |                          Modifiers                          
---------+---------+-------------------------------------------------------------
- id     | integer | not null default nextval('metrics_labels_id_seq'::regclass)
- labels | jsonb   | not null
+                            Table "public.metrics_labels"
+   Column    |  Type   |                          Modifiers                          
+-------------+---------+-------------------------------------------------------------
+ id          | integer | not null default nextval('metrics_labels_id_seq'::regclass)
+ metric_name | text    | not null
+ labels      | jsonb   | 
 Indexes:
     "metrics_labels_pkey" PRIMARY KEY, btree (id)
-    "metrics_labels_labels_key" UNIQUE CONSTRAINT, btree (labels)
+    "metrics_labels_metric_name_labels_key" UNIQUE CONSTRAINT, btree (metric_name, labels)
     "metrics_labels_idx" gin (labels)
 Referenced by:
     TABLE "metrics" CONSTRAINT "metrics_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES metrics_labels(id)
@@ -64,10 +65,10 @@ SELECT * FROM metrics;
 (3 rows)
 
 SELECT * FROM metrics_labels;
- id |                                labels                                
-----+----------------------------------------------------------------------
-  1 | {"host": "machine1", "service": "nginx", "metric_name": "cpu_usage"}
-  2 | {"host": "machine2", "service": "nginx", "metric_name": "cpu_usage"}
+ id | metric_name |                  labels                  
+----+-------------+------------------------------------------
+  1 | cpu_usage   | {"host": "machine1", "service": "nginx"}
+  2 | cpu_usage   | {"host": "machine2", "service": "nginx"}
 (2 rows)
 
 -- Cleanup

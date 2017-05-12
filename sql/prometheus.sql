@@ -131,7 +131,7 @@ DECLARE
     target_table        NAME;
     target_labels_table NAME;
     metric_labels_id    INTEGER;
-    metric_labels       JSONB = prom_labels(NEW.sample, true);
+    metric_labels       JSONB = prom_labels(NEW.sample);
     keep_samples        BOOL = true;
 BEGIN
 
@@ -150,7 +150,7 @@ BEGIN
     IF TG_NARGS > 2 THEN
         keep_samples := TG_ARGV[2];
     END IF;
-    
+
     -- Insert labels
     EXECUTE format('SELECT id FROM %I l WHERE %L = l.labels',
             target_labels_table, metric_labels) INTO metric_labels_id;
@@ -158,10 +158,11 @@ BEGIN
     IF metric_labels_id IS NULL THEN
         EXECUTE format(
             $$
-            INSERT INTO %I (labels) VALUES (%L) RETURNING id
+            INSERT INTO %I (metric_name, labels) VALUES (%L, %L) RETURNING id
             $$,
             target_labels_table,
-            prom_labels(NEW.sample, true)
+            prom_name(NEW.sample),
+            metric_labels
         ) INTO STRICT metric_labels_id;
     END IF;
 
@@ -184,11 +185,17 @@ CREATE OR REPLACE FUNCTION create_prometheus_table(
 )
     RETURNS VOID LANGUAGE PLPGSQL VOLATILE AS
 $BODY$
+DECLARE
+    timescaledb_ext_relid OID = NULL;
 BEGIN
+    SELECT oid FROM pg_extension
+    WHERE extname = 'timescaledb'
+    INTO timescaledb_ext_relid;
+
     IF table_name IS NULL THEN
        RAISE EXCEPTION 'Invalid table name';
     END IF;
-    
+
     IF metrics_table_name IS NULL THEN
        metrics_table_name := format('%I_metrics', table_name);
     END IF;
@@ -196,7 +203,7 @@ BEGIN
     IF metrics_labels_table_name IS NULL THEN
        metrics_labels_table_name := format('%I_labels', metrics_table_name);
     END IF;
-    
+
     EXECUTE format(
         $$
         CREATE TABLE %I (sample prom_sample NOT NULL)
@@ -206,11 +213,16 @@ BEGIN
 
     EXECUTE format(
         $$
-        CREATE TABLE %I (id SERIAL PRIMARY KEY, labels jsonb UNIQUE NOT NULL)
+        CREATE TABLE %I (
+               id SERIAL PRIMARY KEY,
+               metric_name TEXT NOT NULL,
+               labels jsonb,
+               UNIQUE(metric_name, labels)
+        )
         $$,
         metrics_labels_table_name
     );
-    
+
     EXECUTE format(
         $$
         CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER REFERENCES %I(id))
@@ -236,5 +248,9 @@ BEGIN
         metrics_labels_table_name,
         keep_samples
     );
+
+    IF timescaledb_ext_relid IS NOT NULL THEN
+        PERFORM create_hypertable(metrics_table_name::regclass, 'time');
+    END IF;
 END
 $BODY$;

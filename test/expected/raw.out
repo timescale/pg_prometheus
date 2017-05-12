@@ -44,21 +44,18 @@ WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
  Fri May 12 13:32:08 2017 UTC |       30.2
 (2 rows)
 
-EXPLAIN ANALYZE SELECT prom_time(sample), prom_value(sample) FROM metrics 
+EXPLAIN SELECT prom_time(sample), prom_value(sample) FROM metrics 
 WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
       prom_name(sample) = 'cpu_usage' AND
       prom_labels(sample) @> '{"service": "nginx", "host": "machine1"}';
                                                                QUERY PLAN                                                               
 ----------------------------------------------------------------------------------------------------------------------------------------
- Bitmap Heap Scan on metrics  (cost=24.01..28.04 rows=1 width=16) (actual time=0.014..0.016 rows=2 loops=1)
+ Bitmap Heap Scan on metrics  (cost=24.01..28.04 rows=1 width=16)
    Recheck Cond: (prom_labels(sample) @> '{"host": "machine1", "service": "nginx"}'::jsonb)
    Filter: ((prom_time(sample) > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone) AND (prom_name(sample) = 'cpu_usage'::text))
-   Heap Blocks: exact=1
-   ->  Bitmap Index Scan on metrics_labels_idx  (cost=0.00..24.01 rows=1 width=0) (actual time=0.007..0.007 rows=2 loops=1)
+   ->  Bitmap Index Scan on metrics_labels_idx  (cost=0.00..24.01 rows=1 width=0)
          Index Cond: (prom_labels(sample) @> '{"host": "machine1", "service": "nginx"}'::jsonb)
- Planning time: 0.058 ms
- Execution time: 0.030 ms
-(8 rows)
+(5 rows)
 
 -- Cleanup
 DROP TABLE metrics CASCADE;
