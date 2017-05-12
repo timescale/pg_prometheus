@@ -1,0 +1,8 @@
+*~
+/pg_prometheus.so
+/test/results
+/test/regression.diffs
+/test/regression.out
+/sql/pg_prometheus--*.sql
+/src/*.d
+/src/*.o

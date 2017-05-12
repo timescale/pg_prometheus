@@ -1,0 +1,76 @@
+\set ECHO ALL
+\set ON_ERROR_STOP 1
+SET TIME ZONE 'UTC';
+DROP TABLE IF EXISTS metrics_labels CASCADE;
+NOTICE:  table "metrics_labels" does not exist, skipping
+DROP TABLE IF EXISTS metrics CASCADE;
+NOTICE:  table "metrics" does not exist, skipping
+DROP TABLE IF EXISTS input;
+NOTICE:  table "input" does not exist, skipping
+SELECT create_prometheus_table('input', 'metrics');
+ create_prometheus_table 
+-------------------------
+ 
+(1 row)
+
+\d input
+       Table "public.input"
+ Column |    Type     | Modifiers 
+--------+-------------+-----------
+ sample | prom_sample | not null
+Triggers:
+    insert_trigger BEFORE INSERT ON input FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_metric('metrics', 'metrics_labels', 't')
+
+\d metrics
+              Table "public.metrics"
+  Column   |           Type           | Modifiers 
+-----------+--------------------------+-----------
+ time      | timestamp with time zone | 
+ value     | double precision         | 
+ labels_id | integer                  | 
+Foreign-key constraints:
+    "metrics_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES metrics_labels(id)
+
+\d metrics_labels
+                         Table "public.metrics_labels"
+ Column |  Type   |                          Modifiers                          
+--------+---------+-------------------------------------------------------------
+ id     | integer | not null default nextval('metrics_labels_id_seq'::regclass)
+ labels | jsonb   | not null
+Indexes:
+    "metrics_labels_pkey" PRIMARY KEY, btree (id)
+    "metrics_labels_labels_key" UNIQUE CONSTRAINT, btree (labels)
+    "metrics_labels_idx" gin (labels)
+Referenced by:
+    TABLE "metrics" CONSTRAINT "metrics_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES metrics_labels(id)
+
+INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
+                         ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
+                         ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000');
+SELECT * FROM input;
+                                sample                                 
+-----------------------------------------------------------------------
+ cpu_usage{service="nginx",host="machine1"} 34.600000 1494595898000000
+ cpu_usage{service="nginx",host="machine2"} 10.300000 1494595899000000
+ cpu_usage{service="nginx",host="machine1"} 30.200000 1494595928000000
+(3 rows)
+
+SELECT * FROM metrics;
+             time             | value | labels_id 
+------------------------------+-------+-----------
+ Fri May 12 13:31:38 2017 UTC |  34.6 |         1
+ Fri May 12 13:31:39 2017 UTC |  10.3 |         2
+ Fri May 12 13:32:08 2017 UTC |  30.2 |         1
+(3 rows)
+
+SELECT * FROM metrics_labels;
+ id |                                labels                                
+----+----------------------------------------------------------------------
+  1 | {"host": "machine1", "service": "nginx", "metric_name": "cpu_usage"}
+  2 | {"host": "machine2", "service": "nginx", "metric_name": "cpu_usage"}
+(2 rows)
+
+-- Cleanup
+DROP TABLE metrics CASCADE;
+DROP TABLE metrics_labels CASCADE;
+DROP TABLE input;
