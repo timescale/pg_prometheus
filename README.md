@@ -74,7 +74,7 @@ samples, and one `metrics` table with the following schema:
  time      | timestamp with time zone |
  value     | double precision         |
  labels_id | integer                  |
- ```
+```
 
 Labels will be stored in a companion table called `metrics_labels`:
 
@@ -83,7 +83,7 @@ Column |  Type   |                          Modifiers
 --------+---------+-------------------------------------------------------------
  id     | integer | not null default nextval('metrics_labels_id_seq'::regclass)
  labels | jsonb   | not null
- ```
+```
 
 The incoming metrics should now be directed to the `input` table. A
 trigger on the `input` table will normalize the Prometheus metric
