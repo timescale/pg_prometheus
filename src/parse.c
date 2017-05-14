@@ -38,7 +38,7 @@ typedef struct PrometheusParseCtx
 static int
 parse_labels(char *input, PrometheusParseCtx *ctx)
 {
-    PrometheusLabel *curr = ctx->sample == NULL ? NULL : PROM_LABELS(ctx->sample), *prev = curr;
+    PrometheusLabel *curr = ctx->sample == NULL ? NULL : PROM_LABELS(ctx->sample);
     int i = 0;
 
     if (input[i] != '{')
@@ -117,7 +117,6 @@ parse_labels(char *input, PrometheusParseCtx *ctx)
         {
             PROM_LABEL_NAME_SET(curr, labelname, namelen);
             PROM_LABEL_VALUE_SET(curr, value_start, valuelen);
-            prev = curr;
             curr = PROM_LABEL_NEXT(curr);
         }
 

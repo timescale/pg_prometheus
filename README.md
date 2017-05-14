@@ -76,13 +76,16 @@ samples, and one `metrics` table with the following schema:
  labels_id | integer                  |
 ```
 
-Labels will be stored in a companion table called `metrics_labels`:
+Labels will be stored in a companion table called `metrics_labels`
+(note that `metric_name` is its own columns since it is always
+present):
 
 ```SQL
-Column |  Type   |                          Modifiers
---------+---------+-------------------------------------------------------------
- id     | integer | not null default nextval('metrics_labels_id_seq'::regclass)
- labels | jsonb   | not null
+   Column    |  Type   |                          Modifiers                          
+-------------+---------+-------------------------------------------------------------
+ id          | integer | not null default nextval('metrics_labels_id_seq'::regclass)
+ metric_name | text    | not null
+ labels      | jsonb   | 
 ```
 
 The incoming metrics should now be directed to the `input` table. A
