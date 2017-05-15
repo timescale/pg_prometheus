@@ -13,6 +13,10 @@ CREATE INDEX metrics_labels_idx ON metrics USING GIN (prom_labels(sample));
 INSERT INTO metrics VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
                            ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
                            ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000'),
+                           -- Test various corner-case values
+                           ('cpu_usage{service="nginx",host="machine1"} NaN 1494595928000'),
+                           ('cpu_usage{service="nginx",host="machine1"} +Inf 1494595928000'),
+                           ('cpu_usage{service="nginx",host="machine1"} -Inf 1494595928000'),
                            -- Test with no labels
                            ('cpu_usage 30.2 1494595928000');
 

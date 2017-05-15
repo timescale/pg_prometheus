@@ -18,6 +18,10 @@ Indexes:
 INSERT INTO metrics VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
                            ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
                            ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000'),
+                           -- Test various corner-case values
+                           ('cpu_usage{service="nginx",host="machine1"} NaN 1494595928000'),
+                           ('cpu_usage{service="nginx",host="machine1"} +Inf 1494595928000'),
+                           ('cpu_usage{service="nginx",host="machine1"} -Inf 1494595928000'),
                            -- Test with no labels
                            ('cpu_usage 30.2 1494595928000');
 SELECT * FROM metrics;
@@ -26,8 +30,11 @@ SELECT * FROM metrics;
  cpu_usage{service="nginx",host="machine1"} 34.600000 1494595898000000
  cpu_usage{service="nginx",host="machine2"} 10.300000 1494595899000000
  cpu_usage{service="nginx",host="machine1"} 30.200000 1494595928000000
+ cpu_usage{service="nginx",host="machine1"} nan 1494595928000000
+ cpu_usage{service="nginx",host="machine1"} inf 1494595928000000
+ cpu_usage{service="nginx",host="machine1"} -inf 1494595928000000
  cpu_usage 30.200000 1494595928000000
-(4 rows)
+(7 rows)
 
 SELECT prom_time(sample), prom_value(sample), prom_labels(sample) FROM metrics;
           prom_time           | prom_value |               prom_labels                
@@ -35,8 +42,11 @@ SELECT prom_time(sample), prom_value(sample), prom_labels(sample) FROM metrics;
  Fri May 12 13:31:38 2017 UTC |       34.6 | {"host": "machine1", "service": "nginx"}
  Fri May 12 13:31:39 2017 UTC |       10.3 | {"host": "machine2", "service": "nginx"}
  Fri May 12 13:32:08 2017 UTC |       30.2 | {"host": "machine1", "service": "nginx"}
+ Fri May 12 13:32:08 2017 UTC |        NaN | {"host": "machine1", "service": "nginx"}
+ Fri May 12 13:32:08 2017 UTC |   Infinity | {"host": "machine1", "service": "nginx"}
+ Fri May 12 13:32:08 2017 UTC |  -Infinity | {"host": "machine1", "service": "nginx"}
  Fri May 12 13:32:08 2017 UTC |       30.2 | {}
-(4 rows)
+(7 rows)
 
 SELECT prom_time(sample), prom_value(sample) FROM metrics
 WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
@@ -46,7 +56,10 @@ WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
 ------------------------------+------------
  Fri May 12 13:31:38 2017 UTC |       34.6
  Fri May 12 13:32:08 2017 UTC |       30.2
-(2 rows)
+ Fri May 12 13:32:08 2017 UTC |        NaN
+ Fri May 12 13:32:08 2017 UTC |   Infinity
+ Fri May 12 13:32:08 2017 UTC |  -Infinity
+(5 rows)
 
 EXPLAIN SELECT prom_time(sample), prom_value(sample) FROM metrics
 WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
@@ -70,9 +83,12 @@ SELECT prom_value(sample), prom_labels(sample) FROM metrics;
        34.6 | {"host": "machine1", "service": "nginx"}
        10.3 | {"host": "machine2", "service": "nginx"}
        30.2 | {"host": "machine1", "service": "nginx"}
+        NaN | {"host": "machine1", "service": "nginx"}
+   Infinity | {"host": "machine1", "service": "nginx"}
+  -Infinity | {"host": "machine1", "service": "nginx"}
        30.2 | {}
        30.2 | {"host": "machine3", "service": "nginx"}
-(5 rows)
+(8 rows)
 
 -- Cleanup
 DROP TABLE metrics CASCADE;
