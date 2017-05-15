@@ -24,3 +24,16 @@ SELECT * FROM metrics_labels;
 DROP TABLE metrics CASCADE;
 DROP TABLE metrics_labels CASCADE;
 DROP TABLE input;
+
+-- Test inserts without keeping original samples
+SELECT create_prometheus_table('input', 'metrics', keep_samples => false);
+
+INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000');
+
+SELECT * FROM input;
+SELECT * FROM metrics;
+
+-- Cleanup
+DROP TABLE metrics CASCADE;
+DROP TABLE metrics_labels CASCADE;
+DROP TABLE input;

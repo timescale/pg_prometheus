@@ -105,18 +105,6 @@ CREATE OPERATOR -> (
 );
 
 
--- Operator classes
---CREATE OPERATOR CLASS prom_time_ops
---   DEFAULT FOR TYPE prom_sample USING btree AS
---        OPERATOR        1       < ,
---        OPERATOR        2       <= ,
---        OPERATOR        3       = ,
---        OPERATOR        4       >= ,
---        OPERATOR        5       > ,
---        FUNCTION        1       prom_time_cmp(prom_sample, prom_sample);
-
-
-
 -- JSONB functions
 CREATE FUNCTION prom_jsonb(prom_sample)
     RETURNS jsonb
