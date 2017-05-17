@@ -39,6 +39,8 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 
 EXTRA_CLEAN = $(EXT_SQL_FILE) $(DEPS)
 
+DOCKER_IMAGE_NAME=pg_prometheus
+
 include $(PGXS)
 override CFLAGS += -DINCLUDE_PACKAGE_SUPPORT=0 -MMD
 override pg_regress_clean_files = test/results/ test/regression.diffs test/regression.out tmp_check/ log/
@@ -61,10 +63,13 @@ package: clean $(EXT_SQL_FILE)
 	$(install_sh) -m 644 $(EXTENSION).control 'package/extension/'
 	$(install_sh) -m 644 $(EXT_SQL_FILE) 'package/extension/'
 
+docker-image: Dockerfile
+	docker build -t $(DOCKER_IMAGE_NAME) .
+
 typedef.list: clean $(OBJS)
 	./scripts/generate_typedef.sh
 
 pgindent: typedef.list
 	pgindent --typedef=typedef.list
 
-.PHONY: check-sql-files all
+.PHONY: check-sql-files all docker-image
