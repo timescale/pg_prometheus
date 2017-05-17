@@ -147,7 +147,7 @@ prom_from_cstring(char *input)
     int ret;
     char       metric_name[MAX_NAMELEN];
     double     value;
-    int64_t    time;
+    int64_t    time_ms;
     int        label_start_idx;
     //size_t label_count;
     size_t metric_namelen;
@@ -207,7 +207,7 @@ prom_from_cstring(char *input)
 
     input += ret;
 
-    ret = sscanf(input, " %lf %" PRId64 "", &value, &time);
+    ret = sscanf(input, " %lf %" PRId64 "", &value, &time_ms);
 
     if (ret < 1)
     {
@@ -218,14 +218,14 @@ prom_from_cstring(char *input)
     {
         struct timeval now;
         gettimeofday(&now, NULL);
-        time = now.tv_sec * 1000 + now.tv_usec / 1000;
+        time_ms = now.tv_sec * 1000 + now.tv_usec / 1000;
     }
 
     sample->value = value;
 #if defined(__TEST__)
-    sample->time = time;
+    sample->time = time_ms;
 #else
-    sample->time = pg_unix_microseconds_to_timestamp(time * 1000);
+    sample->time = pg_unix_microseconds_to_timestamp(time_ms * 1000);
 #endif
 
 #if defined(__TEST__)

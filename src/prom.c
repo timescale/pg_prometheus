@@ -59,7 +59,7 @@ prom_out(PG_FUNCTION_ARGS)
 {
     PrometheusSample    *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
     char       *result;
-    int64 time = pg_timestamp_to_unix_microseconds(PROM_TIME(sample));
+    int64 time_ms = pg_timestamp_to_unix_microseconds(PROM_TIME(sample)) / 1000;
 
     if (PROM_CONTAINS_LABELS(sample))
     {
@@ -67,14 +67,14 @@ prom_out(PG_FUNCTION_ARGS)
                           PROM_NAME(sample),
                           prom_labels_to_cstring(sample),
                           PROM_VALUE(sample),
-                          time);
+                          time_ms);
     }
     else
     {
         result = psprintf("%s %lf " INT64_FORMAT "",
                           PROM_NAME(sample),
                           PROM_VALUE(sample),
-                          time);
+                          time_ms);
 
     }
     PG_RETURN_CSTRING(result);

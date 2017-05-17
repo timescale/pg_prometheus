@@ -169,6 +169,7 @@ CREATE OR REPLACE FUNCTION create_prometheus_table(
        table_name NAME,
        metrics_table_name NAME = NULL,
        metrics_labels_table_name NAME = NULL,
+       normalized_tables BOOL = TRUE,
        keep_samples BOOL = TRUE
 )
     RETURNS VOID LANGUAGE PLPGSQL VOLATILE AS
@@ -199,43 +200,80 @@ BEGIN
         table_name
     );
 
-    EXECUTE format(
-        $$
-        CREATE TABLE %I (
-               id SERIAL PRIMARY KEY,
-               metric_name TEXT NOT NULL,
-               labels jsonb,
-               UNIQUE(metric_name, labels)
-        )
-        $$,
-        metrics_labels_table_name
-    );
+    IF normalized_tables THEN
+        -- Create labels table
+        EXECUTE format(
+            $$
+            CREATE TABLE %I (
+                  id SERIAL PRIMARY KEY,
+                  metric_name TEXT NOT NULL,
+                  labels jsonb,
+                  UNIQUE(metric_name, labels)
+            )
+            $$,
+            metrics_labels_table_name
+        );
+        -- Add a GIN index on labels
+        EXECUTE format(
+            $$
+            CREATE INDEX %I_idx ON %1$I USING GIN (labels)
+            $$,
+            metrics_labels_table_name
+        );
 
-    EXECUTE format(
-        $$
-        CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER REFERENCES %I(id))
-        $$,
-        metrics_table_name,
-        metrics_labels_table_name
-    );
+        -- Create samples table
+        EXECUTE format(
+            $$
+            CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER REFERENCES %I(id))
+            $$,
+            metrics_table_name,
+            metrics_labels_table_name
+        );
 
-    EXECUTE format(
-        $$
-        CREATE INDEX %I_idx ON %1$I USING GIN (labels)
-        $$,
-        metrics_labels_table_name
-    );
+        -- Create time column index
+        EXECUTE format(
+            $$
+            CREATE INDEX %I_time_idx ON %1$I USING BTREE (time)
+            $$,
+            metrics_table_name
+        );
 
-    EXECUTE format(
-        $$
-        CREATE TRIGGER insert_trigger BEFORE INSERT ON %I
-        FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_metric(%I, %I, %L)
-        $$,
-        table_name,
-        metrics_table_name,
-        metrics_labels_table_name,
-        keep_samples
-    );
+        -- Create labels ID column index
+        EXECUTE format(
+            $$
+            CREATE INDEX %I_label_id_idx ON %1$I USING BTREE (labels_id)
+            $$,
+            metrics_table_name
+        );
+
+        -- Create a trigger to redirect samples into normalized tables
+        EXECUTE format(
+            $$
+            CREATE TRIGGER insert_trigger BEFORE INSERT ON %I
+            FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_metric(%I, %I, %L)
+            $$,
+            table_name,
+            metrics_table_name,
+            metrics_labels_table_name,
+            keep_samples
+        );
+    ELSE
+        -- Create labels index on raw samples table
+        EXECUTE format(
+            $$
+            CREATE INDEX %I_labels_idx ON %1$I USING GIN (prom_labels(sample))
+            $$,
+            table_name
+        );
+
+        -- Create time index on raw samples table
+        EXECUTE format(
+            $$
+            CREATE INDEX %I_time_idx ON %1$I USING BTREE (prom_time(sample))
+            $$,
+            table_name
+        );
+    END IF;
 
     IF timescaledb_ext_relid IS NOT NULL THEN
         PERFORM create_hypertable(metrics_table_name::regclass, 'time');
