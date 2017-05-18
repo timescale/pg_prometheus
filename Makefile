@@ -40,6 +40,9 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 EXTRA_CLEAN = $(EXT_SQL_FILE) $(DEPS)
 
 DOCKER_IMAGE_NAME=pg_prometheus
+ORGANIZATION=timescale
+GIT_VERSION=$(shell git describe --always | sed 's|v\(.*\)|\1|')
+GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 
 include $(PGXS)
 override CFLAGS += -DINCLUDE_PACKAGE_SUPPORT=0 -MMD
@@ -64,7 +67,14 @@ package: clean $(EXT_SQL_FILE)
 	$(install_sh) -m 644 $(EXT_SQL_FILE) 'package/extension/'
 
 docker-image: Dockerfile
-	docker build -t $(DOCKER_IMAGE_NAME) .
+	docker build -t $(ORGANIZATION)/$(DOCKER_IMAGE_NAME) .
+	docker tag $(ORGANIZATION)/$(EXTENSION):latest $(ORGANIZATION)/$(EXTENSION):${GIT_VERSION}
+	docker tag $(ORGANIZATION)/$(EXTENSION):latest $(ORGANIZATION)/$(EXTENSION):${GIT_BRANCH}
+
+docker-push: docker-image
+	docker push $(ORGANIZATION)/$(EXTENSION):latest
+	docker push $(ORGANIZATION)/$(EXTENSION):${GIT_VERSION}
+	docker push $(ORGANIZATION)/$(EXTENSION):${GIT_BRANCH}
 
 typedef.list: clean $(OBJS)
 	./scripts/generate_typedef.sh
