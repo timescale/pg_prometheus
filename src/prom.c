@@ -59,7 +59,7 @@ prom_out(PG_FUNCTION_ARGS)
 {
     PrometheusSample    *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
     char       *result;
-    int64 time_ms = pg_timestamp_to_unix_microseconds(PROM_TIME(sample)) / 1000;
+    int64 time_ms = prom_timestamp_to_unix_microseconds(PROM_TIME(sample)) / 1000;
 
     if (PROM_CONTAINS_LABELS(sample))
     {

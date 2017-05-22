@@ -7,7 +7,7 @@
  * Convert a Postgres TIMESTAMP to BIGINT microseconds relative the UNIX epoch.
  */
 int64
-pg_timestamp_to_unix_microseconds(TimestampTz timestamp)
+prom_timestamp_to_unix_microseconds(TimestampTz timestamp)
 {
     int64       epoch_diff_microseconds = (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * USECS_PER_DAY;
     int64       microseconds;
@@ -39,7 +39,7 @@ pg_timestamp_to_unix_microseconds(TimestampTz timestamp)
  * Convert BIGINT microseconds relative the UNIX epoch to a Postgres TIMESTAMP.
  */
 TimestampTz
-pg_unix_microseconds_to_timestamp(int64 microseconds)
+prom_unix_microseconds_to_timestamp(int64 microseconds)
 {
     TimestampTz timestamp;
 

@@ -215,7 +215,7 @@ prom_from_cstring(char *input)
 #if defined(__TEST__)
     sample->time = time_ms;
 #else
-    sample->time = pg_unix_microseconds_to_timestamp(time_ms * 1000);
+    sample->time = prom_unix_microseconds_to_timestamp(time_ms * 1000);
 #endif
 
 #if defined(__TEST__)
