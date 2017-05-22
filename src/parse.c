@@ -93,16 +93,6 @@ parse_labels(char *input, PrometheusParseCtx *ctx)
 
         while (input[i] != '"' && input[i] != '}')
         {
-            if (input[i] == '\\')
-            {
-                if (input[i + 1] != '\\' &&
-                    input[i + 1] != '"' &&
-                    input[i + 1] != 'n')
-                {
-                    fail("Invalid escape sequence %c%c\n", input[i], input[i + 1]);
-                }
-                i++;
-            }
             i++;
         }
 
