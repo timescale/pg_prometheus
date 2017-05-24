@@ -273,10 +273,11 @@ BEGIN
             $$,
             table_name
         );
+
+        IF timescaledb_ext_relid IS NOT NULL  THEN
+           PERFORM create_hypertable(metrics_table_name::regclass, 'time');
+        END IF;
     END IF;
 
-    IF timescaledb_ext_relid IS NOT NULL THEN
-        PERFORM create_hypertable(metrics_table_name::regclass, 'time');
-    END IF;
 END
 $BODY$;
