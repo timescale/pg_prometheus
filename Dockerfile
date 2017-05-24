@@ -3,7 +3,7 @@ FROM postgres:9.6.2-alpine
 MAINTAINER erik@timescale.com
 
 ENV PG_MAJOR 9.6
-ENV TIMESCALEDB_VERSION 0.0.9-beta
+ENV TIMESCALEDB_VERSION 0.0.10-beta
 ENV PG_PROMETHEUS_VERSION 0.0.1
 
 COPY pg_prometheus.control Makefile /build/pg_prometheus/

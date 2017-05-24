@@ -25,15 +25,15 @@ INSERT INTO metrics VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 149
                            -- Test with no labels
                            ('cpu_usage 30.2 1494595928000');
 SELECT * FROM metrics;
-                                sample                                 
------------------------------------------------------------------------
- cpu_usage{service="nginx",host="machine1"} 34.600000 1494595898000000
- cpu_usage{service="nginx",host="machine2"} 10.300000 1494595899000000
- cpu_usage{service="nginx",host="machine1"} 30.200000 1494595928000000
- cpu_usage{service="nginx",host="machine1"} nan 1494595928000000
- cpu_usage{service="nginx",host="machine1"} inf 1494595928000000
- cpu_usage{service="nginx",host="machine1"} -inf 1494595928000000
- cpu_usage 30.200000 1494595928000000
+                               sample                               
+--------------------------------------------------------------------
+ cpu_usage{service="nginx",host="machine1"} 34.600000 1494595898000
+ cpu_usage{service="nginx",host="machine2"} 10.300000 1494595899000
+ cpu_usage{service="nginx",host="machine1"} 30.200000 1494595928000
+ cpu_usage{service="nginx",host="machine1"} nan 1494595928000
+ cpu_usage{service="nginx",host="machine1"} inf 1494595928000
+ cpu_usage{service="nginx",host="machine1"} -inf 1494595928000
+ cpu_usage 30.200000 1494595928000
 (7 rows)
 
 SELECT prom_time(sample), prom_value(sample), prom_labels(sample) FROM metrics;

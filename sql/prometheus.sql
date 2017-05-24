@@ -221,7 +221,7 @@ BEGIN
             metrics_labels_table_name
         );
 
-        -- Create samples table
+        -- Create normalized metrics table
         EXECUTE format(
             $$
             CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER REFERENCES %I(id))
@@ -229,6 +229,11 @@ BEGIN
             metrics_table_name,
             metrics_labels_table_name
         );
+
+        -- Make metrics table a hypertable if the TimescaleDB extension is present
+        IF timescaledb_ext_relid IS NOT NULL THEN
+           PERFORM create_hypertable(metrics_table_name::regclass, 'time');
+        END IF;
 
         -- Create time column index
         EXECUTE format(
@@ -273,10 +278,6 @@ BEGIN
             $$,
             table_name
         );
-
-        IF timescaledb_ext_relid IS NOT NULL  THEN
-           PERFORM create_hypertable(metrics_table_name::regclass, 'time');
-        END IF;
     END IF;
 
 END
