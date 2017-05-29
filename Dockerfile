@@ -1,9 +1,9 @@
-FROM postgres:9.6.2-alpine
+FROM postgres:9.6.3-alpine
 
 MAINTAINER erik@timescale.com
 
 ENV PG_MAJOR 9.6
-ENV TIMESCALEDB_VERSION 0.0.10-beta
+ENV TIMESCALEDB_VERSION 0.0.11-beta
 ENV PG_PROMETHEUS_VERSION 0.0.1
 
 COPY pg_prometheus.control Makefile /build/pg_prometheus/
@@ -15,7 +15,8 @@ RUN set -ex \
                 ca-certificates \
                 openssl \
                 tar \
-    && wget -O /build/${TIMESCALEDB_VERSION}.tar.gz "https://github.com/timescale/timescaledb/archive/${TIMESCALEDB_VERSION}.tar.gz" \
+                git \
+    && git clone https://github.com/timescale/timescaledb -b ${TIMESCALEDB_VERSION} /build/timescaledb-${TIMESCALEDB_VERSION} \
     \
     && apk add --no-cache --virtual .build-deps \
                 coreutils \
@@ -25,7 +26,6 @@ RUN set -ex \
                 make \
                 util-linux-dev \
     \
-    && tar zxf /build/${TIMESCALEDB_VERSION}.tar.gz -C /build \
     && make -C /build/timescaledb-${TIMESCALEDB_VERSION} install \
     \
     && make -C /build/pg_prometheus install \

@@ -170,7 +170,8 @@ CREATE OR REPLACE FUNCTION create_prometheus_table(
        metrics_table_name NAME = NULL,
        metrics_labels_table_name NAME = NULL,
        normalized_tables BOOL = TRUE,
-       keep_samples BOOL = TRUE
+       keep_samples BOOL = TRUE,
+       chunk_time_interval INTERVAL = interval '1 day'
 )
     RETURNS VOID LANGUAGE PLPGSQL VOLATILE AS
 $BODY$
@@ -232,13 +233,14 @@ BEGIN
 
         -- Make metrics table a hypertable if the TimescaleDB extension is present
         IF timescaledb_ext_relid IS NOT NULL THEN
-           PERFORM create_hypertable(metrics_table_name::regclass, 'time');
+           PERFORM create_hypertable(metrics_table_name::regclass, 'time',
+                   chunk_time_interval => _timescaledb_internal.interval_to_usec(chunk_time_interval));
         END IF;
 
         -- Create time column index
         EXECUTE format(
             $$
-            CREATE INDEX %I_time_idx ON %1$I USING BTREE (time)
+            CREATE INDEX IF NOT EXISTS %I_time_idx ON %1$I USING BTREE (time)
             $$,
             metrics_table_name
         );
@@ -246,7 +248,7 @@ BEGIN
         -- Create labels ID column index
         EXECUTE format(
             $$
-            CREATE INDEX %I_label_id_idx ON %1$I USING BTREE (labels_id)
+            CREATE INDEX %I_labels_id_idx ON %1$I USING BTREE (labels_id)
             $$,
             metrics_table_name
         );
