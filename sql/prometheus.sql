@@ -217,7 +217,15 @@ BEGIN
         -- Add a GIN index on labels
         EXECUTE format(
             $$
-            CREATE INDEX %I_idx ON %1$I USING GIN (labels)
+            CREATE INDEX %I_labels_idx ON %1$I USING GIN (labels)
+            $$,
+            metrics_labels_table_name
+        );
+
+         -- Add a index on metric name
+        EXECUTE format(
+            $$
+            CREATE INDEX %I_metric_name_idx ON %1$I USING BTREE (metric_name)
             $$,
             metrics_labels_table_name
         );
