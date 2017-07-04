@@ -1,32 +1,18 @@
 #include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/time.h>
-#include <stdlib.h>
+#include <postgres.h>
+
+#include "utils.h"
+#include "prom.h"
+#include "parse.h"
 
 #define MAX_NAMELEN 1024
 
-#if defined(__TEST__)
-#define pfree free
-#define palloc malloc
-#define IGNORE_POSTGRES_INCLUDES 1
-#define fail(format, ...)                       \
-    do {                                        \
-        fprintf(stderr, format, ##__VA_ARGS__); \
-        exit(-1);                               \
-    } while (0);
-#else
 #define fail(format, ...)                                               \
     ereport(ERROR,                                                      \
             (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),              \
              errmsg("invalid input syntax for prometheus sample: " format, \
                     ##__VA_ARGS__)));
-#include <postgres.h>
-#include "utils.h"
-#endif
-
-#include "prom.h"
-#include "parse.h"
 
 typedef struct PrometheusParseCtx
 {
@@ -212,71 +198,7 @@ prom_from_cstring(char *input)
     }
 
     sample->value = value;
-#if defined(__TEST__)
-    sample->time = time_ms;
-#else
     sample->time = prom_unix_microseconds_to_timestamp(time_ms * 1000);
-#endif
-
-#if defined(__TEST__)
-    {
-        PrometheusLabel *label;
-        int i;
-
-        printf("Varsize is %u\n", VARSIZE(sample));
-        printf("Label datalen is %zu\n", PROM_LABEL_DATALEN(sample));
-
-        for (i = 0; i < VARSIZE(sample); i++)
-        {
-            char c = ((char*)sample)[i];
-
-            if (i % 16 == 0)
-                printf("\n");
-
-            if (i % 8 == 0)
-                printf("  ");
-
-            if ((c >= 'a' && c <= 'z') || c == '_')
-            {
-                printf("%2c ", c);
-            } else {
-                printf("%02x ", c & 0xff);
-            }
-        }
-        printf("\n");
-
-        label = PROM_LABELS(sample);
-
-        printf("name: %s len=%zu\n", PROM_NAME(sample), PROM_NAME_LEN(sample));
-
-        for (i = 0; i < sample->numlabels; i++)
-        {
-            printf("%s='%s'\n", PROM_LABEL_NAME(label), PROM_LABEL_VALUE(label));
-            printf("%zu='%zu'\n", PROM_LABEL_NAME_LEN(label), PROM_LABEL_VALUE_LEN(label));
-            label = PROM_LABEL_NEXT(label);
-        }
-
-        printf("value: %lf\n", sample->value);
-        printf("time: %" PRId64 "\n", sample->time);
-    }
-
-    return sample;
-#endif
 
     return sample;
 }
-
-#if defined(__TEST__)
-int
-main(int argc, char **argv)
-{
-    if (argc != 2) {
-        fprintf(stderr, "Unexpected number of arguments: %d\n", argc);
-        return -1;
-    }
-
-    prom_from_cstring(argv[1]);
-
-    return 0;
-}
-#endif
