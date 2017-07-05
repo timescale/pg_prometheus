@@ -170,7 +170,7 @@ CREATE OR REPLACE FUNCTION create_prometheus_table(
        metrics_table_name NAME = NULL,
        metrics_labels_table_name NAME = NULL,
        normalized_tables BOOL = TRUE,
-       keep_samples BOOL = TRUE,
+       keep_samples BOOL = FALSE,
        chunk_time_interval INTERVAL = interval '1 day'
 )
     RETURNS VOID LANGUAGE PLPGSQL VOLATILE AS
