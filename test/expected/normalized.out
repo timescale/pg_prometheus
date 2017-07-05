@@ -29,8 +29,8 @@ Triggers:
  value     | double precision         | 
  labels_id | integer                  | 
 Indexes:
-    "metrics_labels_id_idx" btree (labels_id)
-    "metrics_time_idx" btree ("time")
+    "metrics_labels_id_idx" btree (labels_id, "time" DESC)
+    "metrics_time_idx" btree ("time" DESC)
 Foreign-key constraints:
     "metrics_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES metrics_labels(id)
 
@@ -60,6 +60,14 @@ SELECT * FROM input;
  cpu_usage{service="nginx",host="machine1"} 30.200000 1494595928000
 (3 rows)
 
+SELECT * FROM input_view;
+             time             |   name    | value |                  labels                  
+------------------------------+-----------+-------+------------------------------------------
+ Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
+ Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
+ Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
+(3 rows)
+
 SELECT * FROM metrics;
              time             | value | labels_id 
 ------------------------------+-------+-----------
@@ -77,6 +85,7 @@ SELECT * FROM metrics_labels;
 
 -- Cleanup
 DROP TABLE metrics CASCADE;
+NOTICE:  drop cascades to view input_view
 DROP TABLE metrics_labels CASCADE;
 DROP TABLE input;
 -- Test inserts without keeping original samples
@@ -92,13 +101,38 @@ SELECT * FROM input;
 --------
 (0 rows)
 
+SELECT * FROM input_view;
+             time             |   name    | value |                  labels                  
+------------------------------+-----------+-------+------------------------------------------
+ Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
+(1 row)
+
 SELECT * FROM metrics;
              time             | value | labels_id 
 ------------------------------+-------+-----------
  Fri May 12 13:31:38 2017 UTC |  34.6 |         1
 (1 row)
 
+EXPLAIN (costs off) SELECT * FROM input_view
+WHERE time >  'Fri May 12 13:31:00 2017' AND
+      name = 'cpu_usage' AND
+      labels @> '{"service": "nginx", "host": "machine1"}';
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  Bitmap Heap Scan on metrics_labels l
+         Recheck Cond: (metric_name = 'cpu_usage'::text)
+         Filter: (labels @> '{"host": "machine1", "service": "nginx"}'::jsonb)
+         ->  Bitmap Index Scan on metrics_labels_metric_name_idx
+               Index Cond: (metric_name = 'cpu_usage'::text)
+   ->  Bitmap Heap Scan on metrics m
+         Recheck Cond: ((labels_id = l.id) AND ("time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
+         ->  Bitmap Index Scan on metrics_labels_id_idx
+               Index Cond: ((labels_id = l.id) AND ("time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
+(10 rows)
+
 -- Cleanup
 DROP TABLE metrics CASCADE;
+NOTICE:  drop cascades to view input_view
 DROP TABLE metrics_labels CASCADE;
 DROP TABLE input;

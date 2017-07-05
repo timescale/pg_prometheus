@@ -169,6 +169,7 @@ CREATE OR REPLACE FUNCTION create_prometheus_table(
        table_name NAME,
        metrics_table_name NAME = NULL,
        metrics_labels_table_name NAME = NULL,
+       metrics_view_name NAME = NULL, 
        normalized_tables BOOL = TRUE,
        keep_samples BOOL = FALSE,
        chunk_time_interval INTERVAL = interval '1 day'
@@ -193,6 +194,11 @@ BEGIN
     IF metrics_labels_table_name IS NULL THEN
        metrics_labels_table_name := format('%I_labels', metrics_table_name);
     END IF;
+
+    IF metrics_view_name IS NULL THEN
+       metrics_view_name := format('%I_view', table_name);
+    END IF;
+
 
     EXECUTE format(
         $$
@@ -248,7 +254,7 @@ BEGIN
         -- Create time column index
         EXECUTE format(
             $$
-            CREATE INDEX IF NOT EXISTS %I_time_idx ON %1$I USING BTREE (time)
+            CREATE INDEX IF NOT EXISTS %I_time_idx ON %1$I USING BTREE (time desc)
             $$,
             metrics_table_name
         );
@@ -256,7 +262,7 @@ BEGIN
         -- Create labels ID column index
         EXECUTE format(
             $$
-            CREATE INDEX %I_labels_id_idx ON %1$I USING BTREE (labels_id)
+            CREATE INDEX %I_labels_id_idx ON %1$I USING BTREE (labels_id, time desc)
             $$,
             metrics_table_name
         );
@@ -272,6 +278,19 @@ BEGIN
             metrics_labels_table_name,
             keep_samples
         );
+
+        -- Create a view for the metrics
+        EXECUTE format(
+            $$
+            CREATE VIEW %I AS 
+            SELECT m.time AS time, l.metric_name AS name,  m.value AS value, l.labels AS labels
+            FROM %I AS m
+            INNER JOIN %I l ON (m.labels_id = l.id)
+            $$,
+            metrics_view_name,
+            metrics_table_name,
+            metrics_labels_table_name
+        );
     ELSE
         -- Create labels index on raw samples table
         EXECUTE format(
@@ -286,6 +305,17 @@ BEGIN
             $$
             CREATE INDEX %I_time_idx ON %1$I USING BTREE (prom_time(sample))
             $$,
+            table_name
+        );
+
+        -- Create a view for the metrics
+        EXECUTE format(
+            $$
+            CREATE VIEW %I AS 
+            SELECT prom_time(sample) AS time, prom_name(sample) AS name, prom_value(sample) AS value, prom_labels(sample) AS labels
+            FROM %I
+            $$,
+            metrics_view_name,
             table_name
         );
     END IF;

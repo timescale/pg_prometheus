@@ -17,6 +17,7 @@ INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 14945
                          ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000');
 
 SELECT * FROM input;
+SELECT * FROM input_view;
 SELECT * FROM metrics;
 SELECT * FROM metrics_labels;
 
@@ -31,7 +32,15 @@ SELECT create_prometheus_table('input', 'metrics');
 INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000');
 
 SELECT * FROM input;
+SELECT * FROM input_view;
 SELECT * FROM metrics;
+
+
+EXPLAIN (costs off) SELECT * FROM input_view
+WHERE time >  'Fri May 12 13:31:00 2017' AND
+      name = 'cpu_usage' AND
+      labels @> '{"service": "nginx", "host": "machine1"}';
+
 
 -- Cleanup
 DROP TABLE metrics CASCADE;
