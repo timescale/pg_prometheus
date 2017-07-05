@@ -167,11 +167,12 @@ $BODY$;
 
 CREATE OR REPLACE FUNCTION create_prometheus_table(
        table_name NAME,
-       metrics_table_name NAME = NULL,
+       metrics_values_table_name NAME = NULL,
        metrics_labels_table_name NAME = NULL,
        metrics_view_name NAME = NULL, 
        normalized_tables BOOL = TRUE,
        keep_samples BOOL = FALSE,
+       use_timescaledb BOOL = NULL,
        chunk_time_interval INTERVAL = interval '1 day'
 )
     RETURNS VOID LANGUAGE PLPGSQL VOLATILE AS
@@ -183,16 +184,28 @@ BEGIN
     WHERE extname = 'timescaledb'
     INTO timescaledb_ext_relid;
 
+    IF use_timescaledb IS NULL THEN
+      IF timescaledb_ext_relid IS NULL THEN
+        use_timescaledb := FALSE;
+      ELSE
+        use_timescaledb := TRUE;
+      END IF;
+    END IF;
+
+    IF use_timescaledb AND  timescaledb_ext_relid IS NULL THEN
+      RAISE 'TimescaleDB not installed';
+    END IF;
+
     IF table_name IS NULL THEN
        RAISE EXCEPTION 'Invalid table name';
     END IF;
 
-    IF metrics_table_name IS NULL THEN
-       metrics_table_name := format('%I_metrics', table_name);
+    IF metrics_values_table_name IS NULL THEN
+       metrics_values_table_name := format('%I_values', table_name);
     END IF;
 
     IF metrics_labels_table_name IS NULL THEN
-       metrics_labels_table_name := format('%I_labels', metrics_table_name);
+       metrics_labels_table_name := format('%I_labels', metrics_values_table_name);
     END IF;
 
     IF metrics_view_name IS NULL THEN
@@ -241,13 +254,13 @@ BEGIN
             $$
             CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER REFERENCES %I(id))
             $$,
-            metrics_table_name,
+            metrics_values_table_name,
             metrics_labels_table_name
         );
 
         -- Make metrics table a hypertable if the TimescaleDB extension is present
-        IF timescaledb_ext_relid IS NOT NULL THEN
-           PERFORM create_hypertable(metrics_table_name::regclass, 'time',
+        IF use_timescaledb THEN
+           PERFORM create_hypertable(metrics_values_table_name::regclass, 'time',
                    chunk_time_interval => _timescaledb_internal.interval_to_usec(chunk_time_interval));
         END IF;
 
@@ -256,7 +269,7 @@ BEGIN
             $$
             CREATE INDEX IF NOT EXISTS %I_time_idx ON %1$I USING BTREE (time desc)
             $$,
-            metrics_table_name
+            metrics_values_table_name
         );
 
         -- Create labels ID column index
@@ -264,7 +277,7 @@ BEGIN
             $$
             CREATE INDEX %I_labels_id_idx ON %1$I USING BTREE (labels_id, time desc)
             $$,
-            metrics_table_name
+            metrics_values_table_name
         );
 
         -- Create a trigger to redirect samples into normalized tables
@@ -274,7 +287,7 @@ BEGIN
             FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_metric(%I, %I, %L)
             $$,
             table_name,
-            metrics_table_name,
+            metrics_values_table_name,
             metrics_labels_table_name,
             keep_samples
         );
@@ -288,7 +301,7 @@ BEGIN
             INNER JOIN %I l ON (m.labels_id = l.id)
             $$,
             metrics_view_name,
-            metrics_table_name,
+            metrics_values_table_name,
             metrics_labels_table_name
         );
     ELSE

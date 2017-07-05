@@ -1,23 +1,8 @@
 # Prometheus metrics for PostgreSQL
 
 `pg_prometheus` is an extension for PostgreSQL that defines a
-Prometheus metric samples data type. This allows seamless import of
-metrics in the
-[Prometheus exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/)
-(currently, only text is supported). Given a service with a `/metrics`
-endpoint exposing Prometheus metrics, one can import metrics to the
-`input` table with the following command:
-
-```bash
-curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics FROM STDIN"
-```
-
-The only configuration necessary is to first create the extension and
-`metrics` table:
-
-```SQL
-CREATE TABLE metrics (sample prom_sample);
-```
+Prometheus metric samples data type and provides several storage formats
+for storing Prometheus data. 
 
 ## Installation
 
@@ -29,44 +14,94 @@ make install # Might require super user permissions
 ```
 
 Then restart PostgreSQL and create the extension in the `psql` CLI:
-
 ```SQL
 CREATE EXTENSION pg_prometheus;
 ```
 
-## Querying and indexing
+##  Integrating with Prometheus
 
-A Prometheus sample table can be indexed for better query performance.
+For quickly connect prometheus to pg_prometheus simply 
+connect the [Prometheus PostgreSQL adapter](https://github.com/prometheus-adapter) to a
+database that has pg_prometheus installed.
 
+For more technical details, or to use pg_prometheus without prometheus, read below.
+
+
+## Creating the Prometheus tables.
+
+To create the appropriate Prometheus tables use:
 ```SQL
--- Add time index
-CREATE INDEX metrics_time_idx ON metrics USING (prom_time(sample));
-
--- Add labels index
-CREATE INDEX metrics_labels_idx ON metrics USING GIN (prom_labels(sample));
+SELECT create_prometheus_table('metrics');
 ```
 
-It's then possible to do performant queries, such as:
+This will create a `metrics` table for inserting data in the Prometheus exposition format
+using the Prometheus data type (see below). It will also create
+a `metrics_view` to easily query data.
+
+Other supporting tables may also be created depending on the storage format (see
+below).
+
+## Inserting data
+
+With either storage format, data can be inserted in Prometheus format into the
+main table (e.g. `metrics` in our running example). Data should be formatted
+according to the Prometheus exposition format.
 
 ```SQL
-SELECT prom_time(sample), prom_value(sample) FROM metrics 
-WHERE prom_time(sample) > NOW() - interval '10 min' AND
-      prom_name(sample) = 'cpu_usage' AND
-      prom_labels(sample) @> '{ "service": "nginx"}';
+INSERT INTO metrics VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000');
 ```
 
-## Metrics normalization
+One interesting usage is to scrape a Prometheus endpoint directly:
 
-Alternatively, metric samples can be normalized into more traditional
-tables using native PostgreSQL data types. Instead of creating the metrics
-table directly, do:
+```bash
+curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics FROM STDIN
+```
+
+## Querying data
+
+Pg prometheus creates a view with the `_view` suffix (e.g. `metrics_view`). It has
+the following schema:
 
 ```SQL
-SELECT create_prometheus_table('input', 'metrics');
+  Column |           Type           | Modifiers
+ --------+--------------------------+-----------
+  time   | timestamp with time zone |
+  name   | text                     |
+  value  | double precision         |
+  labels | jsonb                    |
 ```
 
-This creates one `input` table holding the raw Prometheus metric
-samples, and one `metrics` table with the following schema:
+An example query over that view would be 
+```SQL
+SELECT time, value
+FROM metrics_view
+WHERE time > NOW() - interval '10 min' AND
+      name = 'cpu_usage' AND
+      labels @> '{ "service": "nginx"}';
+```
+
+## Storage formats
+
+Pg_prometheus allows two main ways of storing Prometheus metrics: raw and
+normalized (the default). With raw, a table simply stores all the Prometheus samples as the
+prom_sample data type in a single column.  The normalized storage format
+separates out the labels into a separate table. The advantage of the normalized
+format is disk space savings when labels are long and repetitive.
+
+Note that the `metrics` table used for inserting data and `metrics_view` table
+used to query data is created regardless of the storage format and serves to
+hide the underlying storage from the user.
+
+### Raw format
+
+In raw format, data is stored in a table with one column of type `prom_sample`.
+To define a raw table use pass `normalized_tables=>false` to `create_prometheus_table`.
+This will also create appropriate indexes on the raw table.
+
+### Normalized format
+
+In the normalized format, data is stored in two tables. The `values` table
+holds the data values with a foreign key to the labels. It has the following schema:
 
 ```SQL
   Column   |           Type           | Modifiers
@@ -76,7 +111,7 @@ samples, and one `metrics` table with the following schema:
  labels_id | integer                  |
 ```
 
-Labels will be stored in a companion table called `metrics_labels`
+Labels are stored in a companion table called `labels`
 (note that `metric_name` is its own columns since it is always
 present):
 
@@ -88,16 +123,28 @@ present):
  labels      | jsonb   | 
 ```
 
-The incoming metrics should now be directed to the `input` table. A
-trigger on the `input` table will normalize the Prometheus metric
-samples written to the `input` table and insert it into `metrics` and
-`metrics_labels`.
+## Prometheus data type 
 
-Optionally, one can choose to throw away the original Prometheus
-sample data (i.e., the raw samples will not be stored in the `input`
-table, only in `metrics`). In that case, the tables should be created
-as follows:
+The Prometheus data type allow seamless import of metrics in the [Prometheus exposition
+format](https://prometheus.io/docs/instrumenting/exposition_formats/)
+(currently, only text is supported). Given a service with a `/metrics` endpoint
+exposing Prometheus metrics, one can import metrics to the `input` table with
+the following command:
 
+```bash
+curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics FROM STDIN"
+```
+
+## Use with TimescaleDB
+
+[TimescaleDB](http://www.timescale.com/) allows PostgresSQL to better scale for
+time-series data (of which metrics is an example). To enable timescale, simply
+install TimescaleDB! By default, pg_prometheus will use TimescaleDB if it is
+installed. You can explicitly control whether or not to use TimescaleDB with the
+`use_timescaledb` parameter to `create_prometheus_table`.
+
+For example, the following will force pg_prometheus to use Timescale (and will
+error out if it isn't installed):
 ```SQL
-SELECT create_prometheus_table('input', 'metrics', keep_samples => false);
+SELECT create_prometheus_table('metrics', 'use_timescaledb'=>true);
 ```
