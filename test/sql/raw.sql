@@ -42,3 +42,23 @@ SELECT prom_value(sample), prom_labels(sample) FROM metrics;
 
 -- Cleanup
 DROP TABLE metrics CASCADE;
+
+--create table using functio and create the appropriate view
+SELECT create_prometheus_table('metrics', normalized_tables=>false);
+INSERT INTO metrics VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
+                           ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
+                           ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000'),
+                           -- Test various corner-case values
+                           ('cpu_usage{service="nginx",host="machine1"} NaN 1494595928000'),
+                           ('cpu_usage{service="nginx",host="machine1"} +Inf 1494595928000'),
+                           ('cpu_usage{service="nginx",host="machine1"} -Inf 1494595928000'),
+                           -- Test with no labels
+                           ('cpu_usage 30.2 1494595928000');
+
+SELECT * FROM metrics;
+SELECT * FROM metrics_view;
+EXPLAIN (costs off) SELECT * FROM metrics_view
+WHERE time >  'Fri May 12 13:31:00 2017' AND
+      name = 'cpu_usage' AND
+      labels @> '{"service": "nginx", "host": "machine1"}';
+
