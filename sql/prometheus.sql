@@ -26,6 +26,10 @@ CREATE FUNCTION to_prom(cstring)
     AS '$libdir/pg_prometheus', 'prom_in'
     LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION prom_construct(TIMESTAMPTZ, TEXT, double precision, jsonb)
+    RETURNS prom_sample
+    AS '$libdir/pg_prometheus', 'prom_construct'
+    LANGUAGE C IMMUTABLE STRICT;
 
 CREATE FUNCTION prom_has_label(prom_sample, text)
     RETURNS bool

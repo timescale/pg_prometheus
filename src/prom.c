@@ -302,3 +302,103 @@ prom_jsonb(PG_FUNCTION_ARGS)
 	PrometheusSample    *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 	PG_RETURN_POINTER(JsonbValueToJsonb(prom_to_jsonb_value(sample)));
 }
+
+
+
+typedef struct PrometheusJsonbParseCtx
+{
+    PrometheusSample *sample;
+    uint16 numlabels;
+    uint32 numchars;
+} PrometheusJsonbParseCtx;
+
+
+static void
+parse_jsonb_labels(Jsonb *jb, PrometheusJsonbParseCtx *ctx)
+{
+    PrometheusLabel *curr = ctx->sample == NULL ? NULL : PROM_LABELS(ctx->sample);
+    JsonbIterator *it;
+    JsonbValue v;
+    JsonbIteratorToken type = WJB_DONE;
+    int cnt_objects = 0;
+
+    ctx->numlabels = 0;
+    ctx->numchars = 0;
+
+    it = JsonbIteratorInit(&jb->root);
+    while ((type = JsonbIteratorNext(&it, &v, false)) != WJB_DONE)
+    {
+      switch (type)
+      {
+        case WJB_KEY:
+          ctx->numlabels++;
+        case WJB_VALUE:
+          if (v.type ==  jbvString) 
+          {
+            ctx->numchars += v.val.string.len + 1;
+            if (curr != NULL)
+            {
+              if (type == WJB_VALUE)
+              {
+                PROM_LABEL_VALUE_SET(curr, v.val.string.val, v.val.string.len);
+                curr = PROM_LABEL_NEXT(curr);
+              }
+              else 
+              {
+                PROM_LABEL_NAME_SET(curr, v.val.string.val, v.val.string.len);
+              }
+            }
+          }
+          else 
+          {
+            elog(ERROR, "Jsonb labels must be a set of string keys mapped to string values.");
+          }
+          break;
+        case WJB_BEGIN_OBJECT:
+          cnt_objects++;
+          if (cnt_objects > 1) 
+          {
+            elog(ERROR, "Jsonb labels must be a set of string keys mapped to string values: cannot have nested labels.");
+          }
+        case WJB_END_OBJECT:
+          break;
+        default:
+          elog(ERROR, "Jsonb labels must be a set of string keys mapped to string values.");
+      }
+    }
+}
+
+
+
+PG_FUNCTION_INFO_V1(prom_construct);
+
+Datum
+prom_construct(PG_FUNCTION_ARGS)
+{
+	TimestampTz ts = PG_GETARG_TIMESTAMPTZ(0); 
+	text    *name = PG_GETARG_TEXT_PP(1);
+  float8 value = PG_GETARG_FLOAT8(2);
+  Jsonb	   *jb = PG_GETARG_JSONB(3);
+
+	char     *metric_name = text_to_cstring(name);
+  PrometheusJsonbParseCtx ctx = { 0 };
+  PrometheusSample *sample;
+  size_t samplelen;
+
+  parse_jsonb_labels(jb, &ctx);
+
+  samplelen = PROM_ALLOC_LEN(strlen(metric_name), ctx.numlabels, ctx.numchars);
+
+  sample = palloc(samplelen);
+  memset(sample, 0, samplelen);
+  sample->numlabels = ctx.numlabels;
+  sample->value = value;
+  sample->time = ts;
+  PROM_NAME_SET(sample, metric_name, strlen(metric_name));
+
+  SET_VARSIZE(sample, samplelen);
+  ctx.sample = sample;
+  parse_jsonb_labels(jb, &ctx);
+  
+	PG_RETURN_POINTER(sample);
+}
