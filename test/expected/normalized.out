@@ -7,132 +7,150 @@ DROP TABLE IF EXISTS metrics CASCADE;
 NOTICE:  table "metrics" does not exist, skipping
 DROP TABLE IF EXISTS input;
 NOTICE:  table "input" does not exist, skipping
-SELECT create_prometheus_table('input', 'metrics', keep_samples=>true);
+SELECT create_prometheus_table('input');
  create_prometheus_table 
 -------------------------
  
 (1 row)
 
-\d input
-       Table "public.input"
- Column |    Type     | Modifiers 
---------+-------------+-----------
- sample | prom_sample | not null
-Triggers:
-    insert_trigger BEFORE INSERT ON input FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_metric('metrics', 'metrics_labels', 't')
+\dt
+            List of relations
+ Schema |     Name     | Type  |  Owner   
+--------+--------------+-------+----------
+ public | input_labels | table | postgres
+ public | input_values | table | postgres
+(2 rows)
 
-\d metrics
-              Table "public.metrics"
+\d input
+              View "public.input"
+ Column |           Type           | Modifiers 
+--------+--------------------------+-----------
+ sample | prom_sample              | 
+ time   | timestamp with time zone | 
+ name   | text                     | 
+ value  | double precision         | 
+ labels | jsonb                    | 
+Triggers:
+    insert_trigger INSTEAD OF INSERT ON input FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal('input_values', 'input_labels')
+
+\d input_values
+           Table "public.input_values"
   Column   |           Type           | Modifiers 
 -----------+--------------------------+-----------
  time      | timestamp with time zone | 
  value     | double precision         | 
  labels_id | integer                  | 
 Indexes:
-    "metrics_labels_id_idx" btree (labels_id, "time" DESC)
-    "metrics_time_idx" btree ("time" DESC)
+    "input_values_labels_id_idx" btree (labels_id, "time" DESC)
+    "input_values_time_idx" btree ("time" DESC)
 Foreign-key constraints:
-    "metrics_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES metrics_labels(id)
+    "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
 
-\d metrics_labels
-                            Table "public.metrics_labels"
-   Column    |  Type   |                          Modifiers                          
--------------+---------+-------------------------------------------------------------
- id          | integer | not null default nextval('metrics_labels_id_seq'::regclass)
+\d input_labels
+                            Table "public.input_labels"
+   Column    |  Type   |                         Modifiers                         
+-------------+---------+-----------------------------------------------------------
+ id          | integer | not null default nextval('input_labels_id_seq'::regclass)
  metric_name | text    | not null
  labels      | jsonb   | 
 Indexes:
-    "metrics_labels_pkey" PRIMARY KEY, btree (id)
-    "metrics_labels_metric_name_labels_key" UNIQUE CONSTRAINT, btree (metric_name, labels)
-    "metrics_labels_labels_idx" gin (labels)
-    "metrics_labels_metric_name_idx" btree (metric_name)
+    "input_labels_pkey" PRIMARY KEY, btree (id)
+    "input_labels_metric_name_labels_key" UNIQUE CONSTRAINT, btree (metric_name, labels)
+    "input_labels_labels_idx" gin (labels)
+    "input_labels_metric_name_idx" btree (metric_name)
 Referenced by:
-    TABLE "metrics" CONSTRAINT "metrics_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES metrics_labels(id)
+    TABLE "input_values" CONSTRAINT "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
 
 INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
                          ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
                          ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000');
+INSERT INTO input(sample) VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
+                         ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
+                         ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000');
 SELECT * FROM input;
-                               sample                               
---------------------------------------------------------------------
- cpu_usage{service="nginx",host="machine1"} 34.600000 1494595898000
- cpu_usage{service="nginx",host="machine2"} 10.300000 1494595899000
- cpu_usage{service="nginx",host="machine1"} 30.200000 1494595928000
-(3 rows)
+                               sample                               |             time             |   name    | value |                  labels                  
+--------------------------------------------------------------------+------------------------------+-----------+-------+------------------------------------------
+ cpu_usage{host="machine1",service="nginx"} 34.600000 1494595898000 | Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
+ cpu_usage{host="machine2",service="nginx"} 10.300000 1494595899000 | Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
+ cpu_usage{host="machine1",service="nginx"} 30.200000 1494595928000 | Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
+ cpu_usage{host="machine1",service="nginx"} 34.600000 1494595898000 | Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
+ cpu_usage{host="machine2",service="nginx"} 10.300000 1494595899000 | Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
+ cpu_usage{host="machine1",service="nginx"} 30.200000 1494595928000 | Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
+(6 rows)
 
-SELECT * FROM input_view;
-             time             |   name    | value |                  labels                  
-------------------------------+-----------+-------+------------------------------------------
- Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
- Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
- Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
-(3 rows)
-
-SELECT * FROM metrics;
+SELECT * FROM input_values;
              time             | value | labels_id 
 ------------------------------+-------+-----------
  Fri May 12 13:31:38 2017 UTC |  34.6 |         1
  Fri May 12 13:31:39 2017 UTC |  10.3 |         2
  Fri May 12 13:32:08 2017 UTC |  30.2 |         1
-(3 rows)
+ Fri May 12 13:31:38 2017 UTC |  34.6 |         1
+ Fri May 12 13:31:39 2017 UTC |  10.3 |         2
+ Fri May 12 13:32:08 2017 UTC |  30.2 |         1
+(6 rows)
 
-SELECT * FROM metrics_labels;
+SELECT * FROM input_labels;
  id | metric_name |                  labels                  
 ----+-------------+------------------------------------------
   1 | cpu_usage   | {"host": "machine1", "service": "nginx"}
   2 | cpu_usage   | {"host": "machine2", "service": "nginx"}
 (2 rows)
 
--- Cleanup
-DROP TABLE metrics CASCADE;
-NOTICE:  drop cascades to view input_view
-DROP TABLE metrics_labels CASCADE;
-DROP TABLE input;
--- Test inserts without keeping original samples
-SELECT create_prometheus_table('input', 'metrics');
- create_prometheus_table 
--------------------------
- 
-(1 row)
-
-INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000');
-SELECT * FROM input;
- sample 
---------
-(0 rows)
-
-SELECT * FROM input_view;
-             time             |   name    | value |                  labels                  
-------------------------------+-----------+-------+------------------------------------------
- Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
-(1 row)
-
-SELECT * FROM metrics;
-             time             | value | labels_id 
-------------------------------+-------+-----------
- Fri May 12 13:31:38 2017 UTC |  34.6 |         1
-(1 row)
-
-EXPLAIN (costs off) SELECT * FROM input_view
+SELECT sample FROM input
 WHERE time >  'Fri May 12 13:31:00 2017' AND
       name = 'cpu_usage' AND
       labels @> '{"service": "nginx", "host": "machine1"}';
-                                                       QUERY PLAN                                                       
-------------------------------------------------------------------------------------------------------------------------
+                               sample                               
+--------------------------------------------------------------------
+ cpu_usage{host="machine1",service="nginx"} 34.600000 1494595898000
+ cpu_usage{host="machine1",service="nginx"} 30.200000 1494595928000
+ cpu_usage{host="machine1",service="nginx"} 34.600000 1494595898000
+ cpu_usage{host="machine1",service="nginx"} 30.200000 1494595928000
+(4 rows)
+
+EXPLAIN (costs off, verbose on) SELECT * FROM input
+WHERE time >  'Fri May 12 13:31:00 2017' AND
+      name = 'cpu_usage' AND
+      labels @> '{"service": "nginx", "host": "machine1"}';
+                                                         QUERY PLAN                                                         
+----------------------------------------------------------------------------------------------------------------------------
  Nested Loop
-   ->  Bitmap Heap Scan on metrics_labels l
-         Recheck Cond: (metric_name = 'cpu_usage'::text)
-         Filter: (labels @> '{"host": "machine1", "service": "nginx"}'::jsonb)
-         ->  Bitmap Index Scan on metrics_labels_metric_name_idx
-               Index Cond: (metric_name = 'cpu_usage'::text)
-   ->  Bitmap Heap Scan on metrics m
-         Recheck Cond: ((labels_id = l.id) AND ("time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
-         ->  Bitmap Index Scan on metrics_labels_id_idx
-               Index Cond: ((labels_id = l.id) AND ("time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
-(10 rows)
+   Output: prom_construct(m."time", l.metric_name, m.value, l.labels), m."time", l.metric_name, m.value, l.labels
+   ->  Bitmap Heap Scan on public.input_labels l
+         Output: l.id, l.metric_name, l.labels
+         Recheck Cond: (l.metric_name = 'cpu_usage'::text)
+         Filter: (l.labels @> '{"host": "machine1", "service": "nginx"}'::jsonb)
+         ->  Bitmap Index Scan on input_labels_metric_name_idx
+               Index Cond: (l.metric_name = 'cpu_usage'::text)
+   ->  Bitmap Heap Scan on public.input_values m
+         Output: m."time", m.value, m.labels_id
+         Recheck Cond: ((m.labels_id = l.id) AND (m."time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
+         ->  Bitmap Index Scan on input_values_labels_id_idx
+               Index Cond: ((m.labels_id = l.id) AND (m."time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
+(13 rows)
+
+EXPLAIN (costs off, verbose on) SELECT time, name, value, labels FROM input
+WHERE time >  'Fri May 12 13:31:00 2017' AND
+      name = 'cpu_usage' AND
+      labels @> '{"service": "nginx", "host": "machine1"}';
+                                                         QUERY PLAN                                                         
+----------------------------------------------------------------------------------------------------------------------------
+ Nested Loop
+   Output: m."time", l.metric_name, m.value, l.labels
+   ->  Bitmap Heap Scan on public.input_labels l
+         Output: l.id, l.metric_name, l.labels
+         Recheck Cond: (l.metric_name = 'cpu_usage'::text)
+         Filter: (l.labels @> '{"host": "machine1", "service": "nginx"}'::jsonb)
+         ->  Bitmap Index Scan on input_labels_metric_name_idx
+               Index Cond: (l.metric_name = 'cpu_usage'::text)
+   ->  Bitmap Heap Scan on public.input_values m
+         Output: m."time", m.value, m.labels_id
+         Recheck Cond: ((m.labels_id = l.id) AND (m."time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
+         ->  Bitmap Index Scan on input_values_labels_id_idx
+               Index Cond: ((m.labels_id = l.id) AND (m."time" > 'Fri May 12 13:31:00 2017 UTC'::timestamp with time zone))
+(13 rows)
 
 -- Cleanup
-DROP TABLE metrics CASCADE;
-NOTICE:  drop cascades to view input_view
-DROP TABLE metrics_labels CASCADE;
-DROP TABLE input;
+DROP TABLE input_values CASCADE;
+NOTICE:  drop cascades to view input
+DROP TABLE input_labels CASCADE;
