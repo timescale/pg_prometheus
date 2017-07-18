@@ -56,8 +56,8 @@ INSERT INTO metrics VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 149
                            ('cpu_usage 30.2 1494595928000');
 
 SELECT * FROM metrics;
-SELECT * FROM metrics_view;
-EXPLAIN (costs off) SELECT * FROM metrics_view
+SELECT * FROM metrics_samples;
+EXPLAIN (costs off, verbose on) SELECT * FROM metrics
 WHERE time >  'Fri May 12 13:31:00 2017' AND
       name = 'cpu_usage' AND
       labels @> '{"service": "nginx", "host": "machine1"}';

@@ -26,6 +26,10 @@ CREATE FUNCTION to_prom(cstring)
     AS '$libdir/pg_prometheus', 'prom_in'
     LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION prom_construct(TIMESTAMPTZ, TEXT, double precision, jsonb)
+    RETURNS prom_sample
+    AS '$libdir/pg_prometheus', 'prom_construct'
+    LANGUAGE C IMMUTABLE STRICT;
 
 CREATE FUNCTION prom_has_label(prom_sample, text)
     RETURNS bool
@@ -111,67 +115,71 @@ CREATE FUNCTION prom_jsonb(prom_sample)
     AS '$libdir/pg_prometheus', 'prom_jsonb'
     LANGUAGE C IMMUTABLE STRICT;
 
-
-CREATE OR REPLACE FUNCTION prometheus.insert_metric()
+CREATE OR REPLACE FUNCTION prometheus.insert_view_normal()
     RETURNS TRIGGER LANGUAGE PLPGSQL AS
 $BODY$
 DECLARE
-    target_table        NAME;
-    target_labels_table NAME;
-    metric_labels_id    INTEGER;
-    metric_labels       JSONB = prom_labels(NEW.sample);
-    keep_samples        BOOL = true;
+    metric_labels     JSONB = prom_labels(NEW.sample);
+    metric_labels_id  INTEGER;
+    labels_table      NAME;
+    values_table      NAME;
 BEGIN
-
-    IF TG_NARGS < 1 THEN
-        RAISE EXCEPTION 'No target table in insert trigger';
-    ELSE
-        target_table := TG_ARGV[0];
+    IF TG_NARGS != 2 THEN
+        RAISE EXCEPTION 'insert_view_normal requires 2 parameters';
     END IF;
 
-    IF TG_NARGS > 1 THEN
-        target_labels_table := TG_ARGV[1];
-    ELSE
-        target_labels_table := format('%I_labels', target_table);
-    END IF;
-
-    IF TG_NARGS > 2 THEN
-        keep_samples := TG_ARGV[2];
-    END IF;
+    values_table := TG_ARGV[0];
+    labels_table := TG_ARGV[1];
 
     -- Insert labels
-    EXECUTE format('SELECT id FROM %I l WHERE %L = l.labels',
-            target_labels_table, metric_labels) INTO metric_labels_id;
+    EXECUTE format('SELECT id FROM %I l WHERE %L = l.labels AND %L = l.metric_name',
+          labels_table, metric_labels, prom_name(NEW.sample)) INTO metric_labels_id;
 
     IF metric_labels_id IS NULL THEN
-        EXECUTE format(
-            $$
-            INSERT INTO %I (metric_name, labels) VALUES (%L, %L) RETURNING id
-            $$,
-            target_labels_table,
-            prom_name(NEW.sample),
-            metric_labels
-        ) INTO STRICT metric_labels_id;
+      EXECUTE format(
+          $$
+          INSERT INTO %I (metric_name, labels) VALUES (%L, %L) RETURNING id
+          $$,
+          labels_table,
+          prom_name(NEW.sample),
+          metric_labels
+      ) INTO STRICT metric_labels_id;
     END IF;
 
     EXECUTE format('INSERT INTO %I (time, value, labels_id) VALUES (%L, %L, %L)',
-            target_table, prom_time(NEW.sample), prom_value(NEW.sample), metric_labels_id);
-
-    IF keep_samples THEN
-       RETURN NEW;
-    END IF;
+          values_table, prom_time(NEW.sample), prom_value(NEW.sample), metric_labels_id);
 
     RETURN NULL;
 END
 $BODY$;
 
+CREATE OR REPLACE FUNCTION prometheus.insert_view_sample()
+    RETURNS TRIGGER LANGUAGE PLPGSQL AS
+$BODY$
+DECLARE
+    sample_table      NAME;
+BEGIN
+    IF TG_NARGS != 1 THEN
+        RAISE EXCEPTION 'insert_view_normal requires 2 parameters';
+    END IF;
+
+    sample_table := TG_ARGV[0];
+
+    EXECUTE format('INSERT INTO %I (sample) VALUES (%L)',
+          sample_table, NEW.sample);
+
+    RETURN NULL;
+END
+$BODY$;
+
+
 CREATE OR REPLACE FUNCTION create_prometheus_table(
-       table_name NAME,
+       metrics_view_name NAME,
        metrics_values_table_name NAME = NULL,
        metrics_labels_table_name NAME = NULL,
-       metrics_view_name NAME = NULL, 
+       metrics_samples_table_name NAME = NULL,
+       metrics_copy_table_name NAME = NULL,
        normalized_tables BOOL = TRUE,
-       keep_samples BOOL = FALSE,
        use_timescaledb BOOL = NULL,
        chunk_time_interval INTERVAL = interval '1 day'
 )
@@ -196,29 +204,27 @@ BEGIN
       RAISE 'TimescaleDB not installed';
     END IF;
 
-    IF table_name IS NULL THEN
+    IF metrics_view_name IS NULL THEN
        RAISE EXCEPTION 'Invalid table name';
     END IF;
 
     IF metrics_values_table_name IS NULL THEN
-       metrics_values_table_name := format('%I_values', table_name);
+       metrics_values_table_name := format('%I_values', metrics_view_name);
     END IF;
 
     IF metrics_labels_table_name IS NULL THEN
-       metrics_labels_table_name := format('%I_labels', metrics_values_table_name);
+       metrics_labels_table_name := format('%I_labels', metrics_view_name);
     END IF;
 
-    IF metrics_view_name IS NULL THEN
-       metrics_view_name := format('%I_view', table_name);
+    IF metrics_samples_table_name IS NULL THEN
+       metrics_samples_table_name := format('%I_samples', metrics_view_name);
+    END IF;
+
+    IF metrics_copy_table_name IS NULL THEN
+       metrics_copy_table_name := format('%I_copy', metrics_view_name);
     END IF;
 
 
-    EXECUTE format(
-        $$
-        CREATE TABLE %I (sample prom_sample NOT NULL)
-        $$,
-        table_name
-    );
 
     IF normalized_tables THEN
         -- Create labels table
@@ -249,14 +255,31 @@ BEGIN
             metrics_labels_table_name
         );
 
-        -- Create normalized metrics table
         EXECUTE format(
-            $$
-            CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER REFERENCES %I(id))
-            $$,
-            metrics_values_table_name,
-            metrics_labels_table_name
+          $$
+          CREATE TABLE %I (sample prom_sample NOT NULL)
+          $$,
+          metrics_copy_table_name
         );
+
+        -- Create normalized metrics table
+        IF use_timescaledb THEN
+          --does not support foreign  references
+          EXECUTE format(
+              $$
+              CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER)
+              $$,
+              metrics_values_table_name
+          );
+        ELSE
+          EXECUTE format(
+              $$
+              CREATE TABLE %I (time TIMESTAMPTZ, value FLOAT8, labels_id INTEGER REFERENCES %I(id))
+              $$,
+              metrics_values_table_name,
+              metrics_labels_table_name
+          );
+        END IF;
 
         -- Make metrics table a hypertable if the TimescaleDB extension is present
         IF use_timescaledb THEN
@@ -280,23 +303,12 @@ BEGIN
             metrics_values_table_name
         );
 
-        -- Create a trigger to redirect samples into normalized tables
-        EXECUTE format(
-            $$
-            CREATE TRIGGER insert_trigger BEFORE INSERT ON %I
-            FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_metric(%I, %I, %L)
-            $$,
-            table_name,
-            metrics_values_table_name,
-            metrics_labels_table_name,
-            keep_samples
-        );
-
         -- Create a view for the metrics
         EXECUTE format(
             $$
             CREATE VIEW %I AS 
-            SELECT m.time AS time, l.metric_name AS name,  m.value AS value, l.labels AS labels
+            SELECT prom_construct(m.time, l.metric_name, m.value, l.labels) AS sample,
+                   m.time AS time, l.metric_name AS name,  m.value AS value, l.labels AS labels
             FROM %I AS m
             INNER JOIN %I l ON (m.labels_id = l.id)
             $$,
@@ -304,13 +316,42 @@ BEGIN
             metrics_values_table_name,
             metrics_labels_table_name
         );
+
+        EXECUTE format(
+            $$
+            CREATE TRIGGER insert_trigger INSTEAD OF INSERT ON %I
+            FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal(%L, %L)
+            $$,
+            metrics_view_name,
+            metrics_values_table_name,
+            metrics_labels_table_name
+        );
+
+        EXECUTE format(
+            $$
+            CREATE TRIGGER insert_trigger BEFORE INSERT ON %I
+            FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal(%L, %L)
+            $$,
+            metrics_copy_table_name,
+            metrics_values_table_name,
+            metrics_labels_table_name
+        );
+
+
     ELSE
+        EXECUTE format(
+          $$
+          CREATE TABLE %I (sample prom_sample NOT NULL)
+          $$,
+          metrics_samples_table_name
+        );
+
         -- Create labels index on raw samples table
         EXECUTE format(
             $$
             CREATE INDEX %I_labels_idx ON %1$I USING GIN (prom_labels(sample))
             $$,
-            table_name
+            metrics_samples_table_name
         );
 
         -- Create time index on raw samples table
@@ -318,19 +359,29 @@ BEGIN
             $$
             CREATE INDEX %I_time_idx ON %1$I USING BTREE (prom_time(sample))
             $$,
-            table_name
+            metrics_samples_table_name
         );
 
         -- Create a view for the metrics
         EXECUTE format(
             $$
             CREATE VIEW %I AS 
-            SELECT prom_time(sample) AS time, prom_name(sample) AS name, prom_value(sample) AS value, prom_labels(sample) AS labels
+            SELECT sample AS sample, prom_time(sample) AS time, prom_name(sample) AS name, prom_value(sample) AS value, prom_labels(sample) AS labels
             FROM %I
             $$,
             metrics_view_name,
-            table_name
+            metrics_samples_table_name
         );
+
+        EXECUTE format(
+            $$
+            CREATE TRIGGER insert_trigger INSTEAD OF INSERT ON %I
+            FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_sample(%L)
+            $$,
+            metrics_view_name,
+            metrics_samples_table_name
+        );
+
     END IF;
 
 END
