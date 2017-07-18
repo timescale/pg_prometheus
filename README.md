@@ -4,6 +4,22 @@
 Prometheus metric samples data type and provides several storage formats
 for storing Prometheus data. 
 
+## Running from Docker
+
+A PostgreSQL docker image with both pg_prometheus and TimescaleDB installed is
+available in Docker Hub at [timescale/pg_prometheus](https://hub.docker.com/r/timescale/pg_prometheus/).
+
+Example usage:
+```
+docker run --name pg_prometheus -d -p 5432:5432 timescale/pg_prometheus:master postgres \
+      -csynchronous_commit=off
+```
+
+Note that this image inherits from the official [postgres image](https://hub.docker.com/_/postgres/) and
+so all options documented there are applicable to this image as well. Especially
+important for users that wish to persist data outside of docker volumes is the
+`PGDATA` environmental variable and accompanying volume mount.
+
 ## Installation
 
 If installing from source, do:
