@@ -12,6 +12,7 @@ SELECT create_prometheus_table('input');
 \d input
 \d input_values
 \d input_labels
+\d+ input_copy
 
 INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
                          ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),

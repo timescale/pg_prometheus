@@ -17,9 +17,10 @@ SELECT create_prometheus_table('input');
             List of relations
  Schema |     Name     | Type  |  Owner   
 --------+--------------+-------+----------
+ public | input_copy   | table | postgres
  public | input_labels | table | postgres
  public | input_values | table | postgres
-(2 rows)
+(3 rows)
 
 \d input
               View "public.input"
@@ -60,6 +61,14 @@ Indexes:
     "input_labels_metric_name_idx" btree (metric_name)
 Referenced by:
     TABLE "input_values" CONSTRAINT "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
+
+\d+ input_copy
+                        Table "public.input_copy"
+ Column |    Type     | Modifiers | Storage | Stats target | Description 
+--------+-------------+-----------+---------+--------------+-------------
+ sample | prom_sample | not null  | plain   |              | 
+Triggers:
+    insert_trigger BEFORE INSERT ON input_copy FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal('input_values', 'input_labels')
 
 INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
                          ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),

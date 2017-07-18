@@ -51,10 +51,15 @@ according to the Prometheus exposition format.
 INSERT INTO metrics VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000');
 ```
 
+Since `metrics` is a view, and PostgreSQL does not allow `COPY` to views, we
+create a specialized table to be the target of copy commands for normalized
+tables (raw tables could write directly to the underlying `_sample` table).
+By default, copy tables have a `_copy` suffix.
+
 One interesting usage is to scrape a Prometheus endpoint directly:
 
 ```bash
-curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics FROM STDIN
+curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics_copy FROM STDIN
 ```
 
 ## Querying data
@@ -132,7 +137,7 @@ exposing Prometheus metrics, one can import metrics to the `input` table with
 the following command:
 
 ```bash
-curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics FROM STDIN"
+curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics_copy FROM STDIN"
 ```
 
 ## Use with TimescaleDB
