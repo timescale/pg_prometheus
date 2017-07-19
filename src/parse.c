@@ -77,7 +77,7 @@ parse_labels(char *input, PrometheusParseCtx *ctx)
 
 		value_start = input + i;
 
-		while (input[i] != '"' && input[i] != '}')
+		while ((input[i] != '"' || (input[i] == '"' && input[i-1] =='\\')) && input[i] != '\0')
 		{
 			i++;
 		}

@@ -12,6 +12,23 @@
 PG_MODULE_MAGIC;
 #endif
 
+static char * 
+prom_label_strip_escape(const char *orig) 
+{
+   char *new = palloc(strlen(orig)+1);
+   int orig_index = 0;
+   int new_index = 0;
+   while (orig[orig_index] != '\0') {
+     if (orig_index==0 || orig[orig_index] != '\\' || orig[orig_index-1] == '\\')
+     {
+       new[new_index++] = orig[orig_index];
+     }
+     orig_index++;
+   }
+   new[new_index] = '\0';
+   return new;
+}
+
 static char *
 prom_labels_to_cstring(PrometheusSample *sample)
 {
@@ -202,9 +219,10 @@ prom_labels_to_jsonb_value(PrometheusSample *sample, JsonbParseState **parseStat
 		}
 		else
 		{
+      char * strip_escape = prom_label_strip_escape(PROM_LABEL_VALUE(label));
 			v.type = jbvString;
-			v.val.string.len = PROM_LABEL_VALUE_LEN(label);
-			v.val.string.val = PROM_LABEL_VALUE(label);
+			v.val.string.len = strlen(strip_escape);
+			v.val.string.val = strip_escape;
 		}
 
 		pushJsonbValue(parseState, WJB_VALUE, &v);
