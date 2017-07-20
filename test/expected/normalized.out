@@ -43,7 +43,6 @@ Triggers:
  labels_id | integer                  | 
 Indexes:
     "input_values_labels_id_idx" btree (labels_id, "time" DESC)
-    "input_values_time_idx" btree ("time" DESC)
 Foreign-key constraints:
     "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
 

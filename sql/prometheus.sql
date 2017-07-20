@@ -287,14 +287,6 @@ BEGIN
                    chunk_time_interval => _timescaledb_internal.interval_to_usec(chunk_time_interval));
         END IF;
 
-        -- Create time column index
-        EXECUTE format(
-            $$
-            CREATE INDEX IF NOT EXISTS %I_time_idx ON %1$I USING BTREE (time desc)
-            $$,
-            metrics_values_table_name
-        );
-
         -- Create labels ID column index
         EXECUTE format(
             $$
