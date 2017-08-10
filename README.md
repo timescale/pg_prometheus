@@ -37,8 +37,8 @@ CREATE EXTENSION pg_prometheus;
 ##  Integrating with Prometheus
 
 For quickly connecting Prometheus to pg_prometheus simply 
-connect the [Prometheus PostgreSQL adapter](https://github.com/prometheus-adapter) to a
-database that has pg_prometheus installed.
+connect the [Prometheus PostgreSQL adapter](https://github.com/timescale/prometheus-postgresql-adapter)
+to a database that has pg_prometheus installed.
 
 For more technical details, or to use pg_prometheus without Prometheus, read below.
 
