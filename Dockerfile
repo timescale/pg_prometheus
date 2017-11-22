@@ -1,9 +1,9 @@
-FROM postgres:9.6.3-alpine
+FROM postgres:9.6.5-alpine
 
 MAINTAINER erik@timescale.com
 
 ENV PG_MAJOR 9.6
-ENV TIMESCALEDB_VERSION 0.2.0
+ENV TIMESCALEDB_VERSION 0.7.0
 ENV PG_PROMETHEUS_VERSION 0.0.1
 
 COPY pg_prometheus.control Makefile /build/pg_prometheus/
@@ -25,8 +25,9 @@ RUN set -ex \
                 libc-dev \
                 make \
                 util-linux-dev \
+                cmake \
     \
-    && make -C /build/timescaledb-${TIMESCALEDB_VERSION} install \
+    && cd /build/timescaledb-${TIMESCALEDB_VERSION} && ./bootstrap && cd build && make install \
     \
     && make -C /build/pg_prometheus install \
     \
