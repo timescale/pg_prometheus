@@ -167,7 +167,7 @@ You can explicitly control whether or not to use TimescaleDB with the
 For example, the following will force pg_prometheus to use Timescale (and will
 error out if it isn't installed):
 ```SQL
-SELECT create_prometheus_table('metrics', 'use_timescaledb'=>true);
+SELECT create_prometheus_table('metrics',use_timescaledb=>true);
 ```
 
 ## Contributing
