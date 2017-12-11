@@ -2,7 +2,7 @@
 
 `pg_prometheus` is an extension for PostgreSQL that defines a
 Prometheus metric samples data type and provides several storage formats
-for storing Prometheus data. 
+for storing Prometheus data.
 
 Related packages to install:
 - [Prometheus remote storage adaptor](https://github.com/timescale/prometheus-postgresql-adapter) (required)
@@ -30,7 +30,7 @@ important for users that wish to persist data outside of docker volumes is the
 If installing from source, do:
 
 ```bash
-make 
+make
 make install # Might require super user permissions
 ```
 
@@ -41,7 +41,7 @@ CREATE EXTENSION pg_prometheus;
 
 ##  Integrating with Prometheus
 
-For quickly connecting Prometheus to pg_prometheus simply 
+For quickly connecting Prometheus to pg_prometheus simply
 connect the [Prometheus PostgreSQL adapter](https://github.com/timescale/prometheus-postgresql-adapter) to a
 database that has pg_prometheus installed.
 
@@ -81,7 +81,7 @@ By default, copy tables have a `_copy` suffix.
 One interesting usage is to scrape a Prometheus endpoint (e.g. `http://localhost:8080/metrics`) directly (without using Prometheus):
 
 ```bash
-curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics_copy FROM STDIN
+curl http://localhost:8080/metrics | grep -v "^#" | psql -h localhost -U postgres -p 5432 -c "COPY metrics_copy FROM STDIN"
 ```
 
 ## Querying data
@@ -148,11 +148,11 @@ Labels are stored in a companion table called `labels`
 present):
 
 ```SQL
-   Column    |  Type   |                          Modifiers                          
+   Column    |  Type   |                          Modifiers
 -------------+---------+-------------------------------------------------------------
  id          | integer | not null default nextval('metrics_labels_id_seq'::regclass)
  metric_name | text    | not null
- labels      | jsonb   | 
+ labels      | jsonb   |
 ```
 
 ## Use with TimescaleDB
