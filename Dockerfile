@@ -9,6 +9,7 @@ ENV PG_PROMETHEUS_VERSION 0.0.1
 COPY pg_prometheus.control Makefile /build/pg_prometheus/
 COPY src/*.c src/*.h /build/pg_prometheus/src/
 COPY sql/prometheus.sql /build/pg_prometheus/sql/
+COPY docker-entrypoint-initdb.d/reenable_auth.sh /docker-entrypoint-initdb.d/
 
 RUN set -ex \
     && apk add --no-cache --virtual .fetch-deps \
