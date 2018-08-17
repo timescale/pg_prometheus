@@ -70,11 +70,13 @@ docker-image: Dockerfile
 	docker build -t $(ORGANIZATION)/$(DOCKER_IMAGE_NAME) .
 	docker tag $(ORGANIZATION)/$(EXTENSION):latest $(ORGANIZATION)/$(EXTENSION):${GIT_VERSION}
 	docker tag $(ORGANIZATION)/$(EXTENSION):latest $(ORGANIZATION)/$(EXTENSION):${GIT_BRANCH}
+	docker tag $(ORGANIZATION)/$(EXTENSION):latest $(ORGANIZATION)/$(EXTENSION):${EXT_VERSION}
 
 docker-push: docker-image
 	docker push $(ORGANIZATION)/$(EXTENSION):latest
 	docker push $(ORGANIZATION)/$(EXTENSION):${GIT_VERSION}
 	docker push $(ORGANIZATION)/$(EXTENSION):${GIT_BRANCH}
+	docker push $(ORGANIZATION)/$(EXTENSION):${EXT_VERSION}
 
 typedef.list: clean $(OBJS)
 	./scripts/generate_typedef.sh

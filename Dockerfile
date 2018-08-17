@@ -4,7 +4,6 @@ MAINTAINER erik@timescale.com
 
 ENV PG_MAJOR 10.4
 ENV TIMESCALEDB_VERSION 0.11.0
-ENV PG_PROMETHEUS_VERSION 0.2
 
 COPY pg_prometheus.control Makefile /build/pg_prometheus/
 COPY src/*.c src/*.h /build/pg_prometheus/src/
@@ -29,7 +28,6 @@ RUN set -ex \
     \
     && cd /build/timescaledb-${TIMESCALEDB_VERSION} && ./bootstrap && cd build && make install \
     \
-    && sed -i "s/default_version = '[0-9.]\+'/default_version = '${PG_PROMETHEUS_VERSION}'/" /build/pg_prometheus/pg_prometheus.control \
     && make -C /build/pg_prometheus install \
     \
     && apk del .fetch-deps .build-deps \
