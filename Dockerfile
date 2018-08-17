@@ -1,10 +1,9 @@
-FROM postgres:10.2-alpine
+FROM postgres:10.4-alpine
 
 MAINTAINER erik@timescale.com
 
-ENV PG_MAJOR 10.2
-ENV TIMESCALEDB_VERSION 0.9.1
-ENV PG_PROMETHEUS_VERSION 0.0.1
+ENV PG_MAJOR 10.4
+ENV TIMESCALEDB_VERSION 0.11.0
 
 COPY pg_prometheus.control Makefile /build/pg_prometheus/
 COPY src/*.c src/*.h /build/pg_prometheus/src/
