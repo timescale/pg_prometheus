@@ -23,36 +23,33 @@ SELECT create_prometheus_table('input');
 (3 rows)
 
 \d input
-              View "public.input"
- Column |           Type           | Modifiers 
---------+--------------------------+-----------
- sample | prom_sample              | 
- time   | timestamp with time zone | 
- name   | text                     | 
- value  | double precision         | 
- labels | jsonb                    | 
-Triggers:
-    insert_trigger INSTEAD OF INSERT ON input FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal('input_values', 'input_labels')
+                        View "public.input"
+ Column |           Type           | Collation | Nullable | Default 
+--------+--------------------------+-----------+----------+---------
+ time   | timestamp with time zone |           |          | 
+ name   | text                     |           |          | 
+ value  | double precision         |           |          | 
+ labels | jsonb                    |           |          | 
 
 \d input_values
-           Table "public.input_values"
-  Column   |           Type           | Modifiers 
------------+--------------------------+-----------
- time      | timestamp with time zone | 
- value     | double precision         | 
- labels_id | integer                  | 
+                      Table "public.input_values"
+  Column   |           Type           | Collation | Nullable | Default 
+-----------+--------------------------+-----------+----------+---------
+ time      | timestamp with time zone |           |          | 
+ value     | double precision         |           |          | 
+ labels_id | integer                  |           |          | 
 Indexes:
     "input_values_labels_id_idx" btree (labels_id, "time" DESC)
 Foreign-key constraints:
     "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
 
 \d input_labels
-                            Table "public.input_labels"
-   Column    |  Type   |                         Modifiers                         
--------------+---------+-----------------------------------------------------------
- id          | integer | not null default nextval('input_labels_id_seq'::regclass)
- metric_name | text    | not null
- labels      | jsonb   | 
+                               Table "public.input_labels"
+   Column    |  Type   | Collation | Nullable |                 Default                  
+-------------+---------+-----------+----------+------------------------------------------
+ id          | integer |           | not null | nextval('input_labels_id_seq'::regclass)
+ metric_name | text    |           | not null | 
+ labels      | jsonb   |           |          | 
 Indexes:
     "input_labels_pkey" PRIMARY KEY, btree (id)
     "input_labels_metric_name_labels_key" UNIQUE CONSTRAINT, btree (metric_name, labels)
@@ -62,28 +59,28 @@ Referenced by:
     TABLE "input_values" CONSTRAINT "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
 
 \d+ input_copy
-                        Table "public.input_copy"
- Column |    Type     | Modifiers | Storage | Stats target | Description 
---------+-------------+-----------+---------+--------------+-------------
- sample | prom_sample | not null  | plain   |              | 
+                                  Table "public.input_copy"
+ Column |    Type     | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+-------------+-----------+----------+---------+---------+--------------+-------------
+ sample | prom_sample |           | not null |         | plain   |              | 
 Triggers:
     insert_trigger BEFORE INSERT ON input_copy FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal('input_values', 'input_labels')
 
-INSERT INTO input VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
+INSERT INTO input_samples VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
                          ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
                          ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000');
-INSERT INTO input(sample) VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
+INSERT INTO input_samples(sample) VALUES ('cpu_usage{service="nginx",host="machine1"} 34.6 1494595898000'),
                          ('cpu_usage{service="nginx",host="machine2"} 10.3 1494595899000'),
                          ('cpu_usage{service="nginx",host="machine1"} 30.2 1494595928000');
 SELECT * FROM input;
-                               sample                               |             time             |   name    | value |                  labels                  
---------------------------------------------------------------------+------------------------------+-----------+-------+------------------------------------------
- cpu_usage{host="machine1",service="nginx"} 34.600000 1494595898000 | Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
- cpu_usage{host="machine2",service="nginx"} 10.300000 1494595899000 | Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
- cpu_usage{host="machine1",service="nginx"} 30.200000 1494595928000 | Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
- cpu_usage{host="machine1",service="nginx"} 34.600000 1494595898000 | Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
- cpu_usage{host="machine2",service="nginx"} 10.300000 1494595899000 | Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
- cpu_usage{host="machine1",service="nginx"} 30.200000 1494595928000 | Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
+             time             |   name    | value |                  labels                  
+------------------------------+-----------+-------+------------------------------------------
+ Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
+ Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
+ Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
+ Fri May 12 13:31:38 2017 UTC | cpu_usage |  34.6 | {"host": "machine1", "service": "nginx"}
+ Fri May 12 13:31:39 2017 UTC | cpu_usage |  10.3 | {"host": "machine2", "service": "nginx"}
+ Fri May 12 13:32:08 2017 UTC | cpu_usage |  30.2 | {"host": "machine1", "service": "nginx"}
 (6 rows)
 
 SELECT * FROM input_values;
@@ -104,10 +101,10 @@ SELECT * FROM input_labels;
   2 | cpu_usage   | {"host": "machine2", "service": "nginx"}
 (2 rows)
 
-SELECT sample FROM input
-WHERE time >  'Fri May 12 13:31:00 2017' AND
-      name = 'cpu_usage' AND
-      labels @> '{"service": "nginx", "host": "machine1"}';
+SELECT sample FROM input_samples
+WHERE prom_time(sample) >  'Fri May 12 13:31:00 2017' AND
+      prom_name(sample) = 'cpu_usage' AND
+      prom_labels(sample) @> '{"service": "nginx", "host": "machine1"}';
                                sample                               
 --------------------------------------------------------------------
  cpu_usage{host="machine1",service="nginx"} 34.600000 1494595898000
@@ -123,7 +120,7 @@ WHERE time >  'Fri May 12 13:31:00 2017' AND
                                                          QUERY PLAN                                                         
 ----------------------------------------------------------------------------------------------------------------------------
  Nested Loop
-   Output: prom_construct(m."time", l.metric_name, m.value, l.labels), m."time", l.metric_name, m.value, l.labels
+   Output: m."time", l.metric_name, m.value, l.labels
    ->  Bitmap Heap Scan on public.input_labels l
          Output: l.id, l.metric_name, l.labels
          Recheck Cond: (l.metric_name = 'cpu_usage'::text)
@@ -160,5 +157,7 @@ WHERE time >  'Fri May 12 13:31:00 2017' AND
 
 -- Cleanup
 DROP TABLE input_values CASCADE;
-NOTICE:  drop cascades to view input
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to view input
+drop cascades to view input_samples
 DROP TABLE input_labels CASCADE;

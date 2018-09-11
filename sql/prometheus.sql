@@ -299,12 +299,24 @@ BEGIN
         EXECUTE format(
             $$
             CREATE VIEW %I AS 
-            SELECT prom_construct(m.time, l.metric_name, m.value, l.labels) AS sample,
-                   m.time AS time, l.metric_name AS name,  m.value AS value, l.labels AS labels
+            SELECT m.time AS time, l.metric_name AS name,  m.value AS value, l.labels AS labels
             FROM %I AS m
             INNER JOIN %I l ON (m.labels_id = l.id)
             $$,
             metrics_view_name,
+            metrics_values_table_name,
+            metrics_labels_table_name
+        );
+
+        -- Create a view to fetch raw samples
+        EXECUTE format(
+            $$
+            CREATE VIEW %I AS
+            SELECT prom_construct(m.time, l.metric_name, m.value, l.labels) AS sample
+            FROM %I AS m
+            INNER JOIN %I l ON (m.labels_id = l.id)
+            $$,
+            metrics_samples_table_name,
             metrics_values_table_name,
             metrics_labels_table_name
         );
@@ -314,7 +326,7 @@ BEGIN
             CREATE TRIGGER insert_trigger INSTEAD OF INSERT ON %I
             FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal(%L, %L)
             $$,
-            metrics_view_name,
+            metrics_samples_table_name,
             metrics_values_table_name,
             metrics_labels_table_name
         );
