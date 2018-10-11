@@ -39,10 +39,28 @@ make
 make install # Might require super user permissions
 ```
 
-Then restart PostgreSQL and create the extension in the `psql` CLI:
+Edit `postgresql.conf` to include the `pg_prometheus` extension:
+
+```
+shared_preload_libraries = 'pg_prometheus'
+```
+
+Start PostgreSQL and install the extension as a superuser using the `psql` CLI:
 ```SQL
 CREATE EXTENSION pg_prometheus;
 ```
+
+Optionally grant permissions to the database user (`prometheus`) that will own the Prometheus data:
+
+```SQL
+-- Create the role
+CREATE ROLE prometheus WITH LOGIN PASSWORD 'secret';
+
+-- Grant access to the schema
+GRANT ALL ON SCHEMA prometheus TO prometheus;
+```
+
+This also requires superuser privileges.
 
 ##  Integrating with Prometheus
 
