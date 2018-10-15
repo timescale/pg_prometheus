@@ -27,7 +27,12 @@ important for users that wish to persist data outside of docker volumes is the
 
 ## Installation
 
-If installing from source, do:
+### Requirements
+
+* Install PostgreSQL libraries and headers for C language backend development (https://www.postgresql.org/download/)
+* Make sure you have PostgreSQL bin in your `PATH` 
+
+To install from source, do:
 
 ```bash
 make
