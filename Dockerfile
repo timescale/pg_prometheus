@@ -20,3 +20,5 @@ RUN set -ex \
     \
     && apk del .build-deps \
     && rm -rf /build
+
+CMD postgres -csynchronous_commit=off
