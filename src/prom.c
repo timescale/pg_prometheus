@@ -219,7 +219,7 @@ prom_labels_to_jsonb_value(PrometheusSample *sample, JsonbParseState **parseStat
 		}
 		else
 		{
-      char * strip_escape = prom_label_strip_escape(PROM_LABEL_VALUE(label));
+			char * strip_escape = prom_label_strip_escape(PROM_LABEL_VALUE(label));
 			v.type = jbvString;
 			v.val.string.len = strlen(strip_escape);
 			v.val.string.val = strip_escape;
