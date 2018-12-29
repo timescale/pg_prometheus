@@ -30,7 +30,7 @@ important for users that wish to persist data outside of docker volumes is the
 ### Requirements
 
 * Install PostgreSQL libraries and headers for C language backend development (https://www.postgresql.org/download/)
-* Make sure you have PostgreSQL bin in your `PATH` 
+* Make sure you have PostgreSQL bin in your `PATH` and the **postgresql-devel** package for your version of PostgreSQL before compiling from source
 
 To install from source, do:
 
