@@ -16,7 +16,7 @@ available in Docker Hub at [timescale/pg_prometheus](https://hub.docker.com/r/ti
 
 Example usage:
 ```
-docker run --name pg_prometheus -d -p 5432:5432 timescale/pg_prometheus:master postgres \
+docker run --name pg_prometheus -d -p 5432:5432 timescale/pg_prometheus:latest postgres \
       -csynchronous_commit=off
 ```
 
