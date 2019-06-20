@@ -132,22 +132,23 @@ BEGIN
     labels_table := TG_ARGV[1];
 
     -- Insert labels
-    EXECUTE format('SELECT id FROM %I l WHERE %L = l.labels AND %L = l.metric_name',
-          labels_table, metric_labels, prom_name(NEW.sample)) INTO metric_labels_id;
+    EXECUTE format('SELECT id FROM %I.%I l WHERE %L = l.labels AND %L = l.metric_name',
+          TG_TABLE_SCHEMA,labels_table, metric_labels, prom_name(NEW.sample)) INTO metric_labels_id;
 
     IF metric_labels_id IS NULL THEN
       EXECUTE format(
           $$
-          INSERT INTO %I (metric_name, labels) VALUES (%L, %L) RETURNING id
+          INSERT INTO %I.%I (metric_name, labels) VALUES (%L, %L) RETURNING id
           $$,
+          TG_TABLE_SCHEMA,
           labels_table,
           prom_name(NEW.sample),
           metric_labels
       ) INTO STRICT metric_labels_id;
     END IF;
 
-    EXECUTE format('INSERT INTO %I (time, value, labels_id) VALUES (%L, %L, %L)',
-          values_table, prom_time(NEW.sample), prom_value(NEW.sample), metric_labels_id);
+    EXECUTE format('INSERT INTO %I.%I (time, value, labels_id) VALUES (%L, %L, %L)',
+          TG_TABLE_SCHEMA,values_table, prom_time(NEW.sample), prom_value(NEW.sample), metric_labels_id);
 
     RETURN NULL;
 END
@@ -165,8 +166,8 @@ BEGIN
 
     sample_table := TG_ARGV[0];
 
-    EXECUTE format('INSERT INTO %I (sample) VALUES (%L)',
-          sample_table, NEW.sample);
+    EXECUTE format('INSERT INTO %I.%I (sample) VALUES (%L)',
+          TG_TABLE_SCHEMA,sample_table, NEW.sample);
 
     RETURN NULL;
 END
