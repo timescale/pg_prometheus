@@ -160,7 +160,7 @@ DECLARE
     sample_table      NAME;
 BEGIN
     IF TG_NARGS != 1 THEN
-        RAISE EXCEPTION 'insert_view_normal requires 2 parameters';
+        RAISE EXCEPTION 'insert_view_sample requires 1 parameter';
     END IF;
 
     sample_table := TG_ARGV[0];
