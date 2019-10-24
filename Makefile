@@ -5,7 +5,7 @@ SQL_FILES = sql/prometheus.sql
 
 EXT_VERSION = $(shell cat pg_prometheus.control | grep 'default' | sed "s/^.*'\(.*\)'$\/\1/g")
 EXT_SQL_FILE = sql/$(EXTENSION)--$(EXT_VERSION).sql
-PG_VER=pg10
+PG_VER=pg11
 
 DATA = $(EXT_SQL_FILE)
 MODULE_big = $(EXTENSION)
