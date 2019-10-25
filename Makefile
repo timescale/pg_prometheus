@@ -6,6 +6,7 @@ SQL_FILES = sql/prometheus.sql
 EXT_VERSION = $(shell cat pg_prometheus.control | grep 'default' | sed "s/^.*'\(.*\)'$\/\1/g")
 EXT_SQL_FILE = sql/$(EXTENSION)--$(EXT_VERSION).sql
 PG_VER=pg11
+TIMESCALEDB_VER=1.4.1
 
 DATA = $(EXT_SQL_FILE)
 MODULE_big = $(EXTENSION)
@@ -68,13 +69,13 @@ package: clean $(EXT_SQL_FILE)
 	$(install_sh) -m 644 $(EXT_SQL_FILE) 'package/extension/'
 
 docker-image: Dockerfile
-	docker build --build-arg PG_VERSION_TAG=$(PG_VER) -t $(ORGANIZATION)/$(DOCKER_IMAGE_NAME) .
-	docker tag $(ORGANIZATION)/$(EXTENSION):latest $(ORGANIZATION)/$(EXTENSION):${GIT_VERSION}
-	docker tag $(ORGANIZATION)/$(EXTENSION):latest $(ORGANIZATION)/$(EXTENSION):${EXT_VERSION}
+	docker build --build-arg TIMESCALEDB_VERSION=$(TIMESCALEDB_VER) --build-arg PG_VERSION_TAG=$(PG_VER) -t $(ORGANIZATION)/$(DOCKER_IMAGE_NAME):latest-$(PG_VER) .
+	docker tag $(ORGANIZATION)/$(EXTENSION):latest-$(PG_VER) $(ORGANIZATION)/$(EXTENSION):${GIT_VERSION}-$(PG_VER)
+	docker tag $(ORGANIZATION)/$(EXTENSION):latest-$(PG_VER) $(ORGANIZATION)/$(EXTENSION):${EXT_VERSION}-$(PG_VER)
 
 docker-push: docker-image
-	docker push $(ORGANIZATION)/$(EXTENSION):latest
-	docker push $(ORGANIZATION)/$(EXTENSION):${EXT_VERSION}
+	docker push $(ORGANIZATION)/$(EXTENSION):latest-$(PG_VER)
+	docker push $(ORGANIZATION)/$(EXTENSION):${EXT_VERSION}-$(PG_VER)
 
 typedef.list: clean $(OBJS)
 	./scripts/generate_typedef.sh
