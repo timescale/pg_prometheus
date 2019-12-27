@@ -6,7 +6,7 @@ SQL_FILES = sql/prometheus.sql
 EXT_VERSION = $(shell cat pg_prometheus.control | grep 'default' | sed "s/^.*'\(.*\)'$\/\1/g")
 EXT_SQL_FILE = sql/$(EXTENSION)--$(EXT_VERSION).sql
 PG_VER=pg11
-TIMESCALEDB_VER=1.4.1
+TIMESCALEDB_VER=1.5.1
 
 DATA = $(EXT_SQL_FILE)
 MODULE_big = $(EXTENSION)
@@ -43,8 +43,6 @@ EXTRA_CLEAN = $(EXT_SQL_FILE) $(DEPS)
 
 DOCKER_IMAGE_NAME=pg_prometheus
 ORGANIZATION=timescale
-GIT_VERSION=$(shell git describe --always | sed 's|v\(.*\)|\1|')
-GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 
 include $(PGXS)
 override CFLAGS += -DINCLUDE_PACKAGE_SUPPORT=0 -MMD
@@ -70,7 +68,6 @@ package: clean $(EXT_SQL_FILE)
 
 docker-image: Dockerfile
 	docker build --build-arg TIMESCALEDB_VERSION=$(TIMESCALEDB_VER) --build-arg PG_VERSION_TAG=$(PG_VER) -t $(ORGANIZATION)/$(DOCKER_IMAGE_NAME):latest-$(PG_VER) .
-	docker tag $(ORGANIZATION)/$(EXTENSION):latest-$(PG_VER) $(ORGANIZATION)/$(EXTENSION):${GIT_VERSION}-$(PG_VER)
 	docker tag $(ORGANIZATION)/$(EXTENSION):latest-$(PG_VER) $(ORGANIZATION)/$(EXTENSION):${EXT_VERSION}-$(PG_VER)
 
 docker-push: docker-image
