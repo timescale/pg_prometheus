@@ -16,6 +16,8 @@ RUN set -ex \
                 libc-dev \
                 make \
                 util-linux-dev \
+		clang \
+		llvm \
     \
     && make -C /build/pg_prometheus install \
     \
