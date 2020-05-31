@@ -1,5 +1,5 @@
 # pg_prometheus extension
 comment = 'Prometheus metrics for PostgreSQL'
-default_version = '@PROJECT_VERSION_MOD'
+default_version = '0.2.2'
 module_pathname = '$libdir/pg_prometheus'
 relocatable = true
