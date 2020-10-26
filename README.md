@@ -2,7 +2,7 @@
 
 We'll be sunsetting this project in the coming months as we focus on a new implementation with additional functionality
 and better support for new TimescaleDB features (such as compression). You can find the new project at
-[https://github.com/timescale/timescale-prometheus](https://github.com/timescale/timescale-prometheus).
+[https://github.com/timescale/promscale](https://github.com/timescale/promscale).
 
 More details can be found in our [design document](https://tsdb.co/prom-design-doc) for the new project.
 
