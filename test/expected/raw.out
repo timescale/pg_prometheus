@@ -7,10 +7,10 @@ CREATE TABLE metrics (sample prom_sample);
 CREATE INDEX metrics_time_idx ON metrics (prom_time(sample));
 CREATE INDEX metrics_labels_idx ON metrics USING GIN (prom_labels(sample));
 \d metrics
-      Table "public.metrics"
- Column |    Type     | Modifiers 
---------+-------------+-----------
- sample | prom_sample | 
+                Table "public.metrics"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ sample | prom_sample |           |          | 
 Indexes:
     "metrics_labels_idx" gin (prom_labels(sample))
     "metrics_time_idx" btree (prom_time(sample))

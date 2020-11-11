@@ -23,36 +23,36 @@ SELECT create_prometheus_table('input');
 (3 rows)
 
 \d input
-              View "public.input"
- Column |           Type           | Modifiers 
---------+--------------------------+-----------
- sample | prom_sample              | 
- time   | timestamp with time zone | 
- name   | text                     | 
- value  | double precision         | 
- labels | jsonb                    | 
+                        View "public.input"
+ Column |           Type           | Collation | Nullable | Default 
+--------+--------------------------+-----------+----------+---------
+ sample | prom_sample              |           |          | 
+ time   | timestamp with time zone |           |          | 
+ name   | text                     |           |          | 
+ value  | double precision         |           |          | 
+ labels | jsonb                    |           |          | 
 Triggers:
     insert_trigger INSTEAD OF INSERT ON input FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal('input_values', 'input_labels')
 
 \d input_values
-           Table "public.input_values"
-  Column   |           Type           | Modifiers 
------------+--------------------------+-----------
- time      | timestamp with time zone | 
- value     | double precision         | 
- labels_id | integer                  | 
+                      Table "public.input_values"
+  Column   |           Type           | Collation | Nullable | Default 
+-----------+--------------------------+-----------+----------+---------
+ time      | timestamp with time zone |           |          | 
+ value     | double precision         |           |          | 
+ labels_id | integer                  |           |          | 
 Indexes:
     "input_values_labels_id_idx" btree (labels_id, "time" DESC)
 Foreign-key constraints:
     "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
 
 \d input_labels
-                            Table "public.input_labels"
-   Column    |  Type   |                         Modifiers                         
--------------+---------+-----------------------------------------------------------
- id          | integer | not null default nextval('input_labels_id_seq'::regclass)
- metric_name | text    | not null
- labels      | jsonb   | 
+                               Table "public.input_labels"
+   Column    |  Type   | Collation | Nullable |                 Default                  
+-------------+---------+-----------+----------+------------------------------------------
+ id          | integer |           | not null | nextval('input_labels_id_seq'::regclass)
+ metric_name | text    |           | not null | 
+ labels      | jsonb   |           |          | 
 Indexes:
     "input_labels_pkey" PRIMARY KEY, btree (id)
     "input_labels_metric_name_labels_key" UNIQUE CONSTRAINT, btree (metric_name, labels)
@@ -62,10 +62,10 @@ Referenced by:
     TABLE "input_values" CONSTRAINT "input_values_labels_id_fkey" FOREIGN KEY (labels_id) REFERENCES input_labels(id)
 
 \d+ input_copy
-                        Table "public.input_copy"
- Column |    Type     | Modifiers | Storage | Stats target | Description 
---------+-------------+-----------+---------+--------------+-------------
- sample | prom_sample | not null  | plain   |              | 
+                                  Table "public.input_copy"
+ Column |    Type     | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+-------------+-----------+----------+---------+---------+--------------+-------------
+ sample | prom_sample |           | not null |         | plain   |              | 
 Triggers:
     insert_trigger BEFORE INSERT ON input_copy FOR EACH ROW EXECUTE PROCEDURE prometheus.insert_view_normal('input_values', 'input_labels')
 
