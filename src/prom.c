@@ -58,20 +58,21 @@ prom_labels_to_cstring(PrometheusSample *sample)
 	return result;
 }
 
+PGDLLEXPORT Datum prom_in(PG_FUNCTION_ARGS);
+
 PG_FUNCTION_INFO_V1(prom_in);
 
-Datum
-prom_in(PG_FUNCTION_ARGS)
+Datum prom_in(PG_FUNCTION_ARGS)
 {
 	char	   *str = PG_GETARG_CSTRING(0);
 
 	PG_RETURN_POINTER(prom_from_cstring(str));
 }
 
+PGDLLEXPORT Datum prom_out(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_out);
 
-Datum
-prom_out(PG_FUNCTION_ARGS)
+Datum prom_out(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 	char	   *result;
@@ -96,10 +97,11 @@ prom_out(PG_FUNCTION_ARGS)
 	PG_RETURN_CSTRING(result);
 }
 
+PGDLLEXPORT Datum prom_has_label(PG_FUNCTION_ARGS);
+
 PG_FUNCTION_INFO_V1(prom_has_label);
 
-Datum
-prom_has_label(PG_FUNCTION_ARGS)
+Datum prom_has_label(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 	text	   *fname = PG_GETARG_TEXT_PP(1);
@@ -119,20 +121,23 @@ prom_has_label(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(false);
 }
 
+
+PGDLLEXPORT Datum prom_label_count(PG_FUNCTION_ARGS);
+
 PG_FUNCTION_INFO_V1(prom_label_count);
 
-Datum
-prom_label_count(PG_FUNCTION_ARGS)
+Datum prom_label_count(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 
 	PG_RETURN_UINT32(sample->numlabels);
 }
 
+
+PGDLLEXPORT Datum prom_label(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_label);
 
-Datum
-prom_label(PG_FUNCTION_ARGS)
+Datum prom_label(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 	text	   *fname = PG_GETARG_TEXT_PP(1);
@@ -154,30 +159,31 @@ prom_label(PG_FUNCTION_ARGS)
 	PG_RETURN_NULL();
 }
 
+PGDLLEXPORT Datum prom_name(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_name);
 
-Datum
-prom_name(PG_FUNCTION_ARGS)
+Datum prom_name(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 
 	PG_RETURN_TEXT_P(cstring_to_text(PROM_NAME(sample)));
 }
 
+PGDLLEXPORT Datum prom_time(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_time);
 
-Datum
-prom_time(PG_FUNCTION_ARGS)
+Datum prom_time(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 
 	PG_RETURN_TIMESTAMPTZ(PROM_TIME(sample));
 }
 
+
+PGDLLEXPORT Datum prom_value(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_value);
 
-Datum
-prom_value(PG_FUNCTION_ARGS)
+Datum prom_value(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 
@@ -247,10 +253,10 @@ prom_labels_to_jsonb_value(PrometheusSample *sample, JsonbParseState **parseStat
 	return pushJsonbValue(parseState, WJB_END_OBJECT, NULL);
 }
 
+PGDLLEXPORT Datum prom_labels(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_labels);
 
-Datum
-prom_labels(PG_FUNCTION_ARGS)
+Datum prom_labels(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 	bool		include_name = false;
@@ -319,10 +325,10 @@ prom_to_jsonb_value(PrometheusSample *sample)
 	return pushJsonbValue(&parseState, WJB_END_OBJECT, NULL);
 }
 
+PGDLLEXPORT Datum prom_jsonb(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_jsonb);
 
-Datum
-prom_jsonb(PG_FUNCTION_ARGS)
+Datum prom_jsonb(PG_FUNCTION_ARGS)
 {
 	PrometheusSample *sample = (PrometheusSample *) PG_GETARG_POINTER(0);
 
@@ -396,10 +402,10 @@ parse_jsonb_labels(Jsonb *jb, PrometheusJsonbParseCtx *ctx)
 
 
 
+PGDLLEXPORT Datum prom_construct(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(prom_construct);
 
-Datum
-prom_construct(PG_FUNCTION_ARGS)
+Datum prom_construct(PG_FUNCTION_ARGS)
 {
 	TimestampTz ts = PG_GETARG_TIMESTAMPTZ(0);
 	text	   *name = PG_GETARG_TEXT_PP(1);
