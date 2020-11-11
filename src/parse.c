@@ -47,10 +47,10 @@ parse_labels(char *input, PrometheusParseCtx *ctx)
 		size_t		namelen;
 		size_t		valuelen;
 
-		count = sscanf(input + i, "%c%1023[a-zA-Z0-9_]=%n",
-					   &labelname[0], &labelname[1], &value_idx);
+		count = sscanf(input + i, "%1024[a-zA-Z0-9_]=%n",
+					   &labelname[0], &value_idx);
 
-		if (count != 2)
+		if (count != 1)
 		{
 			fail("Unexpected number of input items assigned: %d\n", count);
 		}
